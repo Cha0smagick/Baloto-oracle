@@ -162,17 +162,26 @@ async function loadData() {
     try {
         showLoading(true);
         
-        const [balotoRes, revanchaRes, metadataRes, analysisRes] = await Promise.all([
-            fetch(`${CONFIG.apiBase}baloto.json`),
-            fetch(`${CONFIG.apiBase}revancha.json`),
-            fetch(`${CONFIG.apiBase}metadata.json`),
-            fetch(`${CONFIG.apiBase}analysis_results.json`)
-        ]);
-        
-        state.data.baloto = await balotoRes.json();
-        state.data.revancha = await revanchaRes.json();
-        state.data.metadata = await metadataRes.json();
-        state.data.analysis = await analysisRes.json();
+        // Datos embebidos localmente (src/js/data.js) - sin dependencia de red.
+        // Si por alguna razon no existen (cache vieja), se descargan de data/processed/.
+        if (window.BAL_DATA && window.BAL_DATA.baloto && window.BAL_DATA.metadata) {
+            state.data.baloto = window.BAL_DATA.baloto;
+            state.data.revancha = window.BAL_DATA.revancha;
+            state.data.metadata = window.BAL_DATA.metadata;
+            state.data.analysis = window.BAL_DATA.analysis;
+        } else {
+            const [balotoRes, revanchaRes, metadataRes, analysisRes] = await Promise.all([
+                fetch(`${CONFIG.apiBase}baloto.json`),
+                fetch(`${CONFIG.apiBase}revancha.json`),
+                fetch(`${CONFIG.apiBase}metadata.json`),
+                fetch(`${CONFIG.apiBase}analysis_results.json`)
+            ]);
+            
+            state.data.baloto = await balotoRes.json();
+            state.data.revancha = await revanchaRes.json();
+            state.data.metadata = await metadataRes.json();
+            state.data.analysis = await analysisRes.json();
+        }
         
         // Sort by date descending
         state.data.baloto.sort((a, b) => new Date(b.date) - new Date(a.date));
