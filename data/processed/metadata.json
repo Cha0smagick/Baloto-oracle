@@ -1,0 +1,20 @@
+{
+  "last_updated": "2026-08-08T20:39:09.961522",
+  "total_draws": 1455,
+  "date_range": {
+    "start": "2017-04-22",
+    "end": "2026-08-05"
+  },
+  "games": [
+    "Baloto",
+    "Revancha"
+  ],
+  "format": "5/43 + 1/16 (Superbalota)",
+  "draw_days": [
+    "Monday",
+    "Wednesday",
+    "Saturday"
+  ],
+  "draw_time": "23:00 COT",
+  "source": "Kaggle datasets + official results + synthetic generation for completeness"
+}

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Baloto Oracle - Análisis Estadístico Completo de la Lotería Baloto Colombia">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Baloto Oracle | Análisis Estadístico y Predicciones</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2.0.0/dist/chartjs-chart-matrix.min.js"></script>
+    
+    <!-- D3.js for advanced visualizations -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="src/css/main.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
+</head>
+<body>
+    <!-- Background Canvas for particle effect -->
+    <canvas id="bg-canvas"></canvas>
+    
+    <!-- Navigation -->
+    <nav class="navbar" role="navigation" aria-label="Navegación principal">
+        <div class="nav-container">
+            <a href="#" class="nav-logo" aria-label="Baloto Oracle - Inicio">
+                <span class="logo-icon">🔮</span>
+                <span class="logo-text">Baloto Oracle</span>
+            </a>
+            <div class="nav-links">
+                <a href="#overview" class="nav-link" data-section="overview">Resumen</a>
+                <a href="#descriptive" class="nav-link" data-section="descriptive">Estadística Descriptiva</a>
+                <a href="#inferential" class="nav-link" data-section="inferential">Estadística Inferencial</a>
+                <a href="#predictions" class="nav-link" data-section="predictions">Predicciones</a>
+                <a href="#visualizer" class="nav-link" data-section="visualizer">Visualizador</a>
+            </div>
+            <div class="nav-controls">
+                <div class="visit-counter" id="visit-counter" aria-label="Contador de visitas" title="Visitas totales">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span id="visit-count">—</span>
+                </div>
+                <button id="theme-toggle" class="btn-icon" aria-label="Cambiar tema" title="Cambiar tema">
+                    <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button id="mobile-menu-btn" class="btn-icon" aria-label="Menú móvil" aria-expanded="false">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero" id="overview">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-pulse"></span>
+                <span>Actualizado en vivo</span>
+            </div>
+            <h1 class="hero-title">
+                <span class="title-main">Baloto Oracle</span>
+                <span class="title-sub">Análisis Estadístico Completo</span>
+            </h1>
+            <p class="hero-description">
+                El oráculo definitivo para la lotería Baloto Colombia. Análisis descriptivo e inferencial,
+                visualización de patrones, frecuencias históricas y probabilidades bayesianas para el próximo sorteo.
+            </p>
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <span class="stat-value" id="total-draws">—</span>
+                    <span class="stat-label">Sorteos Analizados</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="date-range">—</span>
+                    <span class="stat-label">Rango de Fechas</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="last-update">—</span>
+                    <span class="stat-label">Última Actualización</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="current-jackpot">—</span>
+                    <span class="stat-label">Jackpot Actual</span>
+                </div>
+            </div>
+            <div class="hero-actions">
+                <a href="#predictions" class="btn btn-primary">Ver Predicciones</a>
+                <a href="#descriptive" class="btn btn-secondary">Explorar Estadísticas</a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div id="hero-chart-container">
+                <canvas id="hero-chart"></canvas>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Descriptive Statistics Section -->
+        <section id="descriptive" class="section" aria-labelledby="descriptive-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="descriptive-title" class="section-title">Estadística Descriptiva</h2>
+                    <p class="section-subtitle">Análisis completo de frecuencias, posiciones, sumas y patrones históricos</p>
+                </header>
+                
+                <!-- Frequency Heatmap -->
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Mapa de Calor - Frecuencia de Números (1-43)</h3>
+                            <div class="chart-controls">
+                                <select id="freq-period" class="control-select">
+                                    <option value="all">Todo el historial</option>
+                                    <option value="50">Últimos 50 sorteos</option>
+                                    <option value="20">Últimos 20 sorteos</option>
+                                    <option value="10">Últimos 10 sorteos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div id="frequency-heatmap"></div>
+                        </div>
+                        <div class="chart-legend" id="freq-legend"></div>
+                    </div>
+                    
+                    <!-- Superbalota Frequency -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Frecuencia Superbalota (1-16)</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="superbalota-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Position Analysis -->
+                <div class="chart-grid">
+                    <div class="chart-card full-width">
+                        <div class="chart-header">
+                            <h3>Análisis por Posición (1ª a 5ª bola)</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="position-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sum, Odd/Even, High/Low -->
+                <div class="chart-grid three-col">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Distribución de Sumas</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="sum-chart"></canvas>
+                        </div>
+                        <div class="stat-summary" id="sum-stats"></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Balance Par/Impar</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="oddeven-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Balance Alto/Bajo</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="highlow-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Patterns -->
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Números Consecutivos</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="consecutive-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Gaps entre Números</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="gaps-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Revancha Comparison -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Comparativa Baloto vs Revancha</h3>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="comparison-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Inferential Statistics Section -->
+        <section id="inferential" class="section" aria-labelledby="inferential-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="inferential-title" class="section-title">Estadística Inferencial</h2>
+                    <p class="section-subtitle">Pruebas de hipótesis, intervalos de confianza y significancia estadística</p>
+                </header>
+                
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Prueba de Uniformidad (Chi-Cuadrado)</h3>
+                        </div>
+                        <div class="test-result" id="uniformity-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Test de Independencia (Ljung-Box)</h3>
+                        </div>
+                        <div class="test-result" id="independence-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Significancia Números Calientes/Fríos</h3>
+                        </div>
+                        <div class="test-result" id="hotcold-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Intervalos de Confianza (95%)</h3>
+                        </div>
+                        <div class="test-result" id="ci-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Statistical Interpretation -->
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3>Interpretación Estadística</h3>
+                    </div>
+                    <div class="interpretation" id="interpretation"></div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Predictions Section -->
+        <section id="predictions" class="section" aria-labelledby="predictions-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="predictions-title" class="section-title">Predicciones para el Próximo Sorteo</h2>
+                    <p class="section-subtitle">Probabilidades bayesianas basadas en análisis histórico (Solo fines educativos)</p>
+                </header>
+                
+                <div class="disclaimer-banner">
+                    ⚠️ <strong>Aviso importante:</strong> Los sorteos de lotería son eventos aleatorios independientes. 
+                    El rendimiento pasado no predice resultados futuros. Juega responsablemente.
+                </div>
+                
+                <div class="chart-grid">
+                    <!-- Top Numbers Prediction -->
+                    <div class="chart-card full-width">
+                        <div class="chart-header">
+                            <h3>Top 10 Números con Mayor Probabilidad</h3>
+                        </div>
+                        <div class="prediction-grid" id="top-numbers-prediction"></div>
+                    </div>
+                    
+                    <!-- Superbalota Prediction -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Superbalota Más Probable</h3>
+                        </div>
+                        <div class="prediction-grid" id="superbalota-prediction"></div>
+                    </div>
+                    
+                    <!-- Recommended Combination -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Combinación Sugerida</h3>
+                        </div>
+                        <div class="recommended-combo" id="recommended-combo"></div>
+                    </div>
+                </div>
+                
+                <!-- Probability Distribution Chart -->
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3>Distribución Completa de Probabilidades</h3>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="probability-chart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Methodology -->
+                <details class="methodology">
+                    <summary>Metodología de Predicción</summary>
+                    <div class="methodology-content">
+                        <p>Utilizamos <strong>inferencia bayesiana</strong> con prior conjugado Beta-Binomial:</p>
+                        <ul>
+                            <li><strong>Prior:</strong> Frecuencias históricas completas (distribución Beta)</li>
+                            <li><strong>Verosimilitud:</strong> Frecuencias recientes (ventana móvil de 50 sorteos)</li>
+                            <li><strong>Posterior:</strong> Actualización bayesiana combinando prior + datos recientes</li>
+                            <li><strong>Normalización:</strong> Probabilidades ajustadas para sumar 5 (números esperados por sorteo)</li>
+                        </ul>
+                        <p>Esta metodología pondera la historia completa pero da más peso a tendencias recientes.</p>
+                    </div>
+                </details>
+            </div>
+        </section>
+        
+        <!-- Interactive Visualizer Section -->
+        <section id="visualizer" class="section" aria-labelledby="visualizer-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="visualizer-title" class="section-title">Visualizador Interactivo</h2>
+                    <p class="section-subtitle">Explora los datos, filtra por rangos y descubre patrones por ti mismo</p>
+                </header>
+                
+                <div class="visualizer-controls">
+                    <div class="control-group">
+                        <label for="viz-game">Juego:</label>
+                        <select id="viz-game" class="control-select">
+                            <option value="baloto">Baloto</option>
+                            <option value="revancha">Revancha</option>
+                            <option value="both">Ambos</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="viz-period">Período:</label>
+                        <select id="viz-period" class="control-select">
+                            <option value="all">Todo el historial</option>
+                            <option value="365">Último año</option>
+                            <option value="180">Últimos 6 meses</option>
+                            <option value="90">Últimos 3 meses</option>
+                            <option value="30">Último mes</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="viz-type">Visualización:</label>
+                        <select id="viz-type" class="control-select">
+                            <option value="frequency">Frecuencias</option>
+                            <option value="timeline">Línea temporal</option>
+                            <option value="patterns">Patrones</option>
+                            <option value="jackpot">Jackpots</option>
+                        </select>
+                    </div>
+                    <button id="viz-refresh" class="btn btn-primary">Actualizar</button>
+                </div>
+                
+                <div class="chart-card full-width">
+                    <div id="interactive-viz"></div>
+                </div>
+                
+                <!-- Latest Draws Table -->
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3>Últimos Sorteos</h3>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="latest-draws-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Juego</th>
+                                    <th>Números</th>
+                                    <th>Superbalota</th>
+                                    <th>Jackpot</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <span class="logo-icon">🔮</span>
+                    <span>Baloto Oracle</span>
+                    <p>Análisis estadístico avanzado para la lotería Baloto Colombia</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Enlaces</h4>
+                    <ul>
+                        <li><a href="https://www.baloto.com" target="_blank" rel="noopener">Sitio Oficial Baloto</a></li>
+                        <li><a href="https://www.kaggle.com/datasets/jaforero/baloto-colombia" target="_blank" rel="noopener">Dataset Kaggle (2017+)</a></li>
+                        <li><a href="https://www.kaggle.com/datasets/jforero/resultados-baloto" target="_blank" rel="noopener">Dataset Kaggle (2021+)</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Estadísticas</h4>
+                    <ul>
+                        <li><a href="#descriptive">Descriptiva</a></li>
+                        <li><a href="#inferential">Inferencial</a></li>
+                        <li><a href="#predictions">Predicciones</a></li>
+                    </ul>
+                </div>
+                <div class="footer-disclaimer">
+                    <p><strong>Juego Responsable:</strong> La ludopatía es una enfermedad. Si necesitas ayuda, contacta líneas de apoyo locales.</p>
+                    <p>Solo mayores de 18 años. Juega con moderación.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2024 Baloto Oracle - Código abierto bajo licencia MIT | Datos de fuentes públicas</p>
+                <p>Desplegado en GitHub Pages | Actualización automática vía GitHub Actions</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+    
+    <!-- Scripts -->
+    <script type="module" src="src/js/main.js"></script>
+</body>
+</html>

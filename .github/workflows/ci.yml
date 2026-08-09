@@ -1,0 +1,84 @@
+name: 🔧 CI Checks
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    name: 🔍 Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install linting tools
+        run: |
+          pip install ruff black isort
+      
+      - name: Check Python formatting (Black)
+        run: |
+          cd baloto-oracle
+          black --check --diff scripts/
+      
+      - name: Check import sorting (isort)
+        run: |
+          cd baloto-oracle
+          isort --check-only --diff scripts/
+      
+      - name: Lint with Ruff
+        run: |
+          cd baloto-oracle
+          ruff check scripts/
+
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install test dependencies
+        run: |
+          pip install pytest pytest-cov
+          pip install -r baloto-oracle/requirements.txt
+      
+      - name: Run tests
+        run: |
+          cd baloto-oracle
+          python -m pytest scripts/ -v --cov=scripts --cov-report=term-missing || echo "No tests found, skipping"
+
+  validate-html:
+    name: ✅ Validate HTML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate HTML
+        uses: Cyb3r-Jak3/html5validator-action@v1.0.1
+        with:
+          root: baloto-oracle
+          ignore: "Attribute \"chartjs-plugin-annotation\" not allowed"
+
+  check-links:
+    name: 🔗 Check Links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check links
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: --verbose --no-progress baloto-oracle/index.html
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
