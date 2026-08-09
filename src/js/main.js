@@ -168,7 +168,7 @@ async function loadData() {
             state.data.baloto = window.BAL_DATA.baloto;
             state.data.revancha = window.BAL_DATA.revancha;
             state.data.metadata = window.BAL_DATA.metadata;
-            state.data.analysis = window.BAL_DATA.analysis;
+            state.data.analysis = window.BAL_DATA.analysis_results || window.BAL_DATA.analysis;
         } else {
             const [balotoRes, revanchaRes, metadataRes, analysisRes] = await Promise.all([
                 fetch(`${CONFIG.apiBase}baloto.json`),
