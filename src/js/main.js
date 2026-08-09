@@ -234,9 +234,20 @@ function showLoading(show) {
     document.querySelectorAll('.chart-wrapper').forEach(wrapper => {
         if (show) {
             wrapper.classList.add('loading');
-            wrapper.innerHTML = '<div class="skeleton" style="width:100%;height:300px;"></div>';
+            // Overlay skeleton SIN destruir el contenido original:
+            // destruir innerHTML borra los contenedores de los charts
+            // (#frequency-heatmap, #probability-chart) y luego nunca se pintan.
+            if (!wrapper.querySelector(':scope > .chart-loading-overlay')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'chart-loading-overlay';
+                overlay.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;min-height:300px;z-index:5;display:flex;align-items:center;justify-content:center;background:var(--bg-secondary, #0b1020);';
+                overlay.innerHTML = '<div class="skeleton" style="width:100%;height:100%;min-height:300px;"></div>';
+                wrapper.appendChild(overlay);
+            }
         } else {
             wrapper.classList.remove('loading');
+            const overlay = wrapper.querySelector(':scope > .chart-loading-overlay');
+            if (overlay) overlay.remove();
         }
     });
 }
@@ -791,26 +802,28 @@ function createProbabilityChart() {
             ...getBarChartOptions('Distribución de Probabilidades para el Próximo Sorteo', 'Probabilidad (%)'),
             plugins: {
                 ...getBarChartOptions().plugins,
-                annotation: {
-                    annotations: {
-                        expectedLine: {
-                            type: 'line',
-                            mode: 'horizontal',
-                            scale: 'y',
-                            value: 100 / 43,
-                            borderColor: 'rgba(239, 68, 68, 0.5)',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            label: {
-                                enabled: true,
-                                content: 'Probabilidad teórica (2.33%)',
-                                position: 'start',
-                                backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                                color: 'white'
+                ...(Chart.registry?.getPlugin?.('annotation') ? {
+                    annotation: {
+                        annotations: {
+                            expectedLine: {
+                                type: 'line',
+                                mode: 'horizontal',
+                                scale: 'y',
+                                value: 100 / 43,
+                                borderColor: 'rgba(239, 68, 68, 0.5)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                label: {
+                                    enabled: true,
+                                    content: 'Probabilidad teórica (2.33%)',
+                                    position: 'start',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                                    color: 'white'
+                                }
                             }
                         }
                     }
-                }
+                } : {})
             }
         }
     });
@@ -1805,6 +1818,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js';
         script.onload = () => {
+            // Recrea el chart de probabilidades para que muestre la anotación (línea teórica)
+            const probs = state.data?.analysis?.predictions?.next_draw_numbers?.probabilities;
+            if (probs && Object.keys(probs).length) createProbabilityChart();
             Object.values(state.charts).forEach(chart => {
                 if (chart && chart.update) chart.update();
             });
