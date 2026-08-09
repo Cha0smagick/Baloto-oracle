@@ -1625,10 +1625,19 @@
         "chi2_statistic": 41.3776,
         "p_value": 0.49814,
         "degrees_of_freedom": 42,
+        "sample_size": 7275,
         "significant_at_05": false,
         "significant_at_01": false,
         "interpretation": "Numbers follow uniform distribution",
-        "effect_size": "small"
+        "effect_size": {
+          "cohens_w": 0.0754,
+          "cramers_v": 0.0754,
+          "label": "peque\u00f1o"
+        },
+        "power_analysis": {
+          "power_at_05": 0.9566,
+          "power_interpretation": "Adequate"
+        }
       },
       "independence_test": {
         "test": "Ljung-Box Test for Autocorrelation (Independence of Draws)",
@@ -1643,41 +1652,56 @@
         "cold_numbers_tested": 2,
         "hot_significant_at_05": 3,
         "cold_significant_at_05": 1,
+        "hot_fdr_significant_at_05": 2,
+        "cold_fdr_significant_at_05": 1,
         "hot_details": [
           {
             "number": 8,
             "count": 196,
-            "p_value": 0.017141
+            "p_value": 0.017141,
+            "fdr_significant_at_05": true,
+            "bonferroni_significant_at_05": false
           },
           {
             "number": 13,
             "count": 196,
-            "p_value": 0.017141
+            "p_value": 0.017141,
+            "fdr_significant_at_05": true,
+            "bonferroni_significant_at_05": false
           },
           {
             "number": 43,
             "count": 192,
-            "p_value": 0.035764
+            "p_value": 0.035764,
+            "fdr_significant_at_05": false,
+            "bonferroni_significant_at_05": false
           },
           {
             "number": 12,
             "count": 190,
-            "p_value": 0.05008
+            "p_value": 0.05008,
+            "fdr_significant_at_05": false,
+            "bonferroni_significant_at_05": false
           }
         ],
         "cold_details": [
           {
             "number": 7,
             "count": 149,
-            "p_value": 0.051782
+            "p_value": 0.051782,
+            "fdr_significant_at_05": false,
+            "bonferroni_significant_at_05": false
           },
           {
             "number": 21,
             "count": 142,
-            "p_value": 0.013034
+            "p_value": 0.013034,
+            "fdr_significant_at_05": true,
+            "bonferroni_significant_at_05": false
           }
         ],
-        "bonferroni_threshold": 0.0011627906976744186,
+        "bonferroni_threshold": 0.001163,
+        "fdr_method": "Benjamini-Hochberg (FDR \u2264 0.05)",
         "interpretation": "Hot/cold patterns may be due to chance"
       },
       "confidence_intervals": {
@@ -1716,6 +1740,13 @@
         "significant_at_05": false,
         "median_odd_heavy": 111.0,
         "median_even_heavy": 110.0,
+        "n_odd_heavy": 765,
+        "n_even_heavy": 690,
+        "effect_size": {
+          "r": 0.007,
+          "rank_biserial": 0.0081,
+          "label": "peque\u00f1o"
+        },
         "interpretation": "No difference in sum distributions"
       },
       "kruskal_wallis_position": {
@@ -1723,6 +1754,11 @@
         "statistic": 5015.206,
         "p_value": 0.0,
         "significant_at_05": true,
+        "n_total": 7275,
+        "effect_size": {
+          "eta_squared": 0.6893,
+          "label": "grande"
+        },
         "interpretation": "At least one position differs in distribution"
       },
       "friedman_consecutive": {
@@ -1731,6 +1767,10 @@
         "p_value": 0.045078,
         "significant_at_05": true,
         "sample_size_per_period": 363,
+        "effect_size": {
+          "kendalls_w": 0.0056,
+          "label": "peque\u00f1o"
+        },
         "interpretation": "Consecutive pattern changes over time"
       },
       "wilcoxon_signed_rank": {
@@ -2187,7 +2227,7 @@
     }
   },
   "metadata": {
-    "analysis_date": "2026-08-08T20:47:48.220931",
+    "analysis_date": "2026-08-08T22:00:17.689747",
     "data_source": {
       "last_updated": "2026-08-08T20:39:09.961522",
       "total_draws": 1455,

@@ -325,6 +325,7 @@ function initializeCharts() {
     createHeroChart();
     renderInferentialTests();
     renderInterpretation();
+    renderPredictiveModeling();
 }
 
 function getChartColors(count, scheme = 'primary') {
@@ -966,18 +967,22 @@ function destroyChart(key) {
 // ==========================================================================
 function renderInferentialTests() {
     const inferential = state.data.analysis?.inferential || {};
+    const parametric = inferential.parametric || {};
+    const nonParametric = inferential.non_parametric || {};
     
-    // Uniformity Test
-    renderTestResult('uniformity-test', inferential.uniformity_test);
+    // Testes paramétricos
+    renderTestResult('uniformity-test', parametric.uniformity_test);
+    renderTestResult('independence-test', parametric.independence_test);
+    renderTestResult('hotcold-test', parametric.hot_cold_significance);
+    renderTestResult('ci-test', parametric.confidence_intervals);
+    renderTestResult('shapiro-test', parametric.normality_shapiro);
+    renderTestResult('anderson-test', parametric.normality_anderson);
     
-    // Independence Test
-    renderTestResult('independence-test', inferential.independence_test);
-    
-    // Hot/Cold Significance
-    renderTestResult('hotcold-test', inferential.hot_cold_significance);
-    
-    // Confidence Intervals
-    renderTestResult('ci-test', inferential.confidence_intervals);
+    // Testes não-paramétricos
+    renderTestResult('mannwhitney-test', nonParametric.mann_whitney_odd_even);
+    renderTestResult('kruskal-test', nonParametric.kruskal_wallis_position);
+    renderTestResult('friedman-test', nonParametric.friedman_consecutive);
+    renderTestResult('wilcoxon-test', nonParametric.wilcoxon_signed_rank);
 }
 
 function renderTestResult(containerId, testData) {
@@ -1025,6 +1030,44 @@ function renderTestResult(containerId, testData) {
         detailsHtml += `<div class="detail-item"><span class="detail-label">Fríos Sig.</span><span class="detail-value">${testData.cold_significant_at_05} / ${testData.cold_numbers_tested}</span></div>`;
         detailsHtml += `<div class="detail-item"><span class="detail-label">Bonferroni</span><span class="detail-value">${testData.bonferroni_threshold?.toFixed(6)}</span></div>`;
     }
+    // FDR (Benjamini-Hochberg) counts
+    if (testData.hot_fdr_significant_at_05 !== undefined) {
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Calientes Sig. FDR</span><span class="detail-value">${testData.hot_fdr_significant_at_05} / ${testData.hot_numbers_tested}</span></div>`;
+    }
+    if (testData.cold_fdr_significant_at_05 !== undefined) {
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Fríos Sig. FDR</span><span class="detail-value">${testData.cold_fdr_significant_at_05} / ${testData.cold_numbers_tested}</span></div>`;
+    }
+    // Effect size block
+    if (testData.effect_size) {
+        const es = testData.effect_size;
+        let esText = '';
+        if (es.cohens_w !== undefined) esText += `W de Cohen: ${es.cohens_w}`;
+        if (es.cramers_v !== undefined) esText += (esText ? ' · ' : '') + `V de Cramér: ${es.cramers_v}`;
+        if (es.r !== undefined) esText += (esText ? ' · ' : '') + `r: ${es.r}`;
+        if (es.rank_biserial !== undefined) esText += (esText ? ' · ' : '') + `Corr. Rango-Biserial: ${es.rank_biserial}`;
+        if (es.eta_squared !== undefined) esText += (esText ? ' · ' : '') + `η²: ${es.eta_squared}`;
+        if (es.kendalls_w !== undefined) esText += (esText ? ' · ' : '') + `W de Kendall: ${es.kendalls_w}`;
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Tamaño del Efecto</span><span class="detail-value">${esText || '—'}</span></div>`;
+        if (es.label) {
+            detailsHtml += `<div class="detail-item"><span class="detail-label">Magnitud</span><span class="detail-value">${es.label}</span></div>`;
+        }
+    }
+    // Power analysis block
+    if (testData.power_analysis) {
+        const pw = testData.power_analysis;
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Potencia (α=0.05)</span><span class="detail-value">${pw.power_at_05 !== undefined ? pw.power_at_05 : '—'}</span></div>`;
+        if (pw.power_interpretation) {
+            detailsHtml += `<div class="detail-item"><span class="detail-label">Poder Estadístico</span><span class="detail-value">${pw.power_interpretation}</span></div>`;
+        }
+    }
+    // Non-parametric specific detail fields
+    if (testData.test === 'Mann-Whitney U Test' && testData.median_odd_heavy !== undefined) {
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Mediana Impar-High</span><span class="detail-value">${testData.median_odd_heavy}</span></div>`;
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Mediana Par-High</span><span class="detail-value">${testData.median_even_heavy}</span></div>`;
+    }
+    if (testData.n_total !== undefined && testData.chi2_statistic === undefined && testData.ljung_box_statistic === undefined) {
+        detailsHtml += `<div class="detail-item"><span class="detail-label">N Total</span><span class="detail-value">${testData.n_total}</span></div>`;
+    }
     
     container.innerHTML = `
         <div class="test-status ${statusClass}">
@@ -1043,13 +1086,21 @@ function renderInterpretation() {
     if (!container) return;
     
     const inferential = state.data.analysis?.inferential || {};
+    const parametric = inferential.parametric || {};
+    const nonParametric = inferential.non_parametric || {};
+    
+    // Efecto de tamaño global para interpretación
+    const esLabel = parametric.uniformity_test?.effect_size?.label || '';
     
     let html = `
         <h4>Conclusiones Principales</h4>
         <ul>
-            <li><strong>Uniformidad:</strong> ${inferential.uniformity_test?.interpretation || 'Los números siguen una distribución uniforme consistente con la aleatoriedad.'}</li>
-            <li><strong>Independencia:</strong> ${inferential.independence_test?.interpretation || 'No hay evidencia de autocorrelación entre sorteos consecutivos.'}</li>
-            <li><strong>Patrones Calientes/Fríos:</strong> ${inferential.hot_cold_significance?.interpretation || 'Las desviaciones observadas son consistentes con fluctuaciones aleatorias normales.'}</li>
+            <li><strong>Uniformidad:</strong> ${parametric.uniformity_test?.interpretation || 'Los números siguen una distribución uniforme consistente con la aleatoriedad.'}${esLabel ? ` <em>(Tamaño del efecto: ${esLabel})</em>` : ''}</li>
+            <li><strong>Independencia:</strong> ${parametric.independence_test?.interpretation || 'No hay evidencia de autocorrelación entre sorteos consecutivos.'}</li>
+            <li><strong>Patrones Calientes/Fríos:</strong> ${parametric.hot_cold_significance?.interpretation || 'Las desviaciones observadas son consistentes con fluctuaciones aleatorias normales.'}</li>
+            <li><strong>Normalidad:</strong> ${parametric.normality_shapiro?.interpretation || 'La distribución de frecuencias de números es compatible con un proceso aleatorio.'}</li>
+            <li><strong>Comparación Impar/Par:</strong> ${nonParametric.mann_whitney_odd_even?.interpretation || 'No hay diferencias significativas entre la distribución de números impares y pares.'}</li>
+            <li><strong>Posición:</strong> ${nonParametric.kruskal_wallis_position?.interpretation || 'No hay diferencias sistemáticas entre las posiciones de los números.'}</li>
             <li><strong>Intervalos de Confianza:</strong> La media de las sumas se encuentra dentro del rango esperado teóricamente.</li>
         </ul>
         <p style="margin-top: 1rem; color: var(--accent-tertiary); font-weight: 500;">
@@ -1124,6 +1175,60 @@ function populatePredictions() {
     }
 }
 
+// ==========================================================================
+// Predictive Modeling Rendering
+// ==========================================================================
+function renderPredictiveModeling() {
+    const container = document.getElementById('predictive-models-container');
+    if (!container) return;
+    
+    const pm = state.data.analysis?.predictive_modeling || {};
+    if (!pm || !Object.keys(pm).length) {
+        container.innerHTML = '<p class="empty-state">Los modelos predictivos se calcularán en el siguiente análisis automático.</p>';
+        return;
+    }
+    
+    const modelDefs = [
+        { key: 'bayesian', label: 'Modelo Bayesiano', icon: '🎲', desc: 'Probabilidades por número con actualización de creencias.' },
+        { key: 'markov_chain', label: 'Cadena de Markov', icon: '🔗', desc: 'Transiciones entre sorteos consecutivos.' },
+        { key: 'regression_trends', label: 'Regresión de Tendencias', icon: '📈', desc: 'Proyección de sumas y frecuencias.' },
+        { key: 'exponential_smoothing', label: 'Suavizado Exponencial', icon: '✨', desc: 'Promedios ponderados con decaimiento temporal.' },
+        { key: 'ensemble', label: 'Modelo Ensamble', icon: '🧠', desc: 'Combinación ponderada de todos los modelos.' }
+    ];
+    
+    const getTopNumbers = (m) => {
+        if (!m) return [];
+        if (Array.isArray(m.top_5)) return m.top_5.slice(0, 5);
+        if (Array.isArray(m.top_10)) return m.top_10.slice(0, 5);
+        if (Array.isArray(m.predictions)) return m.predictions.slice(0, 5);
+        if (m.most_likely !== undefined) return [m.most_likely];
+        return [];
+    };
+    
+    const cardsHtml = modelDefs.map(def => {
+        const m = pm[def.key];
+        if (!m) return '';
+        const top = getTopNumbers(m);
+        const balls = top.map((num, idx) => {
+            const ball = utils.createBall(num, 40);
+            ball.style.animationDelay = `${idx * 60}ms`;
+            return ball.outerHTML;
+        }).join('');
+        const confidence = m.confidence !== undefined
+            ? (m.confidence * 100).toFixed(1) + '%'
+            : (m.confidence_at_05 !== undefined ? (m.confidence_at_05 * 100).toFixed(1) + '%' : '—');
+        return `
+            <div class="model-card">
+                <h4>${def.icon} ${def.label}</h4>
+                <p class="combo-info">${def.desc}</p>
+                ${balls ? `<div class="combo-numbers">${balls}</div>` : '<p class="empty-state">Sin predicción numérica.</p>'}
+                ${confidence !== '—' ? `<div class="detail-item"><span class="detail-label">Confianza</span><span class="detail-value">${confidence}</span></div>` : ''}
+            </div>
+        `;
+    }).filter(Boolean).join('');
+    
+    container.innerHTML = `<div class="model-grid">${cardsHtml}</div>`;
+}
 // ==========================================================================
 // Latest Draws Table
 // ==========================================================================
@@ -1543,6 +1648,9 @@ function initializeParticles() {
     const canvas = document.getElementById('bg-canvas');
     const ctx = canvas.getContext('2d');
     
+    // A11y: respetar prefers-reduced-motion (dibujar un frame estático, sin bucle)
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
     let particles = [];
     const particleCount = 50;
     
@@ -1602,7 +1710,7 @@ function initializeParticles() {
             }
         }
         
-        requestAnimationFrame(animate);
+        if (!reduceMotion) requestAnimationFrame(animate);
     }
     
     window.addEventListener('resize', () => {
@@ -1619,6 +1727,7 @@ function initializeParticles() {
 // Smooth Scroll for Anchor Links
 // ==========================================================================
 function initializeSmoothScroll() {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
             const targetId = this.getAttribute('href');
@@ -1630,7 +1739,7 @@ function initializeSmoothScroll() {
                 const headerHeight = document.querySelector('.navbar').offsetHeight;
                 const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
                 
-                window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                window.scrollTo({ top: targetPosition, behavior: reduceMotion ? 'auto' : 'smooth' });
             }
         });
     });
@@ -1671,9 +1780,35 @@ async function initializeVisitCounter() {
 }
 
 // ==========================================================================
+// Keyboard Focus Visibility (a11y)
+// ==========================================================================
+function initializeFocusVisible() {
+    const html = document.documentElement;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Detectar navegación por teclado: añadir clase cuando se pulsa Tab
+    html.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            html.classList.add('keyboard-nav');
+        }
+    });
+
+    // Quitar la clase cuando se usa el ratón
+    html.addEventListener('mousedown', () => {
+        html.classList.remove('keyboard-nav');
+    });
+
+    // A11y: animaciones reducidas — pausar transiciones del tema
+    if (reduceMotion) {
+        html.classList.add('reduce-motion');
+    }
+}
+
+// ==========================================================================
 // Initialization
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
+    initializeFocusVisible();
     initializeTheme();
     initializeMobileMenu();
     initializeParticles();

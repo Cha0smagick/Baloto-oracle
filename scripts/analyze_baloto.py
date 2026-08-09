@@ -304,6 +304,56 @@ class BalotoAnalyzer:
     
     # ==================== INFERENTIAL STATISTICS ====================
     
+    def _cramers_v(self, chi2_stat: float, n: int, min_dim: int) -> float:
+        """Cramer's V effect size for chi-square tests."""
+        if n == 0 or min_dim <= 1:
+            return 0.0
+        return float(np.sqrt(chi2_stat / (n * (min_dim - 1))))
+
+    def _effect_size_label(self, v: float, kind: str = "v") -> str:
+        """Label effect size magnitude per Cohen conventions."""
+        if kind == "v":  # Cramer's V
+            bounds = [(0.1, "pequeño"), (0.3, "mediano"), (float("inf"), "grande")]
+        elif kind == "d":  # Cohen's d
+            bounds = [(0.2, "pequeño"), (0.5, "mediano"), (float("inf"), "grande")]
+        elif kind == "eta":  # Eta-squared / epsilon-squared
+            bounds = [(0.01, "pequeño"), (0.06, "mediano"), (float("inf"), "grande")]
+        else:
+            bounds = [(0.01, "pequeño"), (0.1, "mediano"), (float("inf"), "grande")]
+        v = abs(v)
+        for threshold, label in bounds:
+            if v < threshold:
+                return label
+        return "grande"
+
+    def _fdr_bh(self, p_values: List[float], alpha: float = 0.05) -> List[bool]:
+        """Benjamini-Hochberg FDR correction. Returns boolean vector rejecting H0."""
+        p = np.array(p_values, dtype=float)
+        n = len(p)
+        order = np.argsort(p)
+        ranked = p[order]
+        # BH critical value: p_(i) <= (i/n) * alpha
+        thresholds = (np.arange(1, n + 1) / n) * alpha
+        # Largest i where p_(i) <= threshold; all smaller i rejected too
+        reject = np.zeros(n, dtype=bool)
+        passing = np.where(ranked <= thresholds)[0]
+        if passing.size > 0:
+            max_idx = passing.max()
+            reject[: max_idx + 1] = True
+        # Map back to original order
+        out = np.zeros(n, dtype=bool)
+        out[order] = reject
+        return out.tolist()
+
+    def _power_chi2_gof(self, w: float, n: int, dof: int, alpha: float = 0.05) -> float:
+        """Statistical power for chi-square GOF with effect size w (Cohen)."""
+        if w <= 0 or n <= 0:
+            return 0.0
+        # Non-centrality parameter lambda = n * w^2
+        lam = n * w * w
+        crit = stats.chi2.ppf(1 - alpha, dof)
+        return float(stats.ncx2.sf(crit, dof, lam))
+
     def test_uniformity(self, df: pd.DataFrame, max_num: int = 43) -> Dict:
         """Chi-square test for uniformity of number distribution."""
         freq_result = self.analyze_number_frequencies(df, max_num=max_num)
@@ -316,16 +366,31 @@ class BalotoAnalyzer:
         expected = [e * observed_sum / expected_sum for e in expected_raw]
         
         chi2_stat, p_value = stats.chisquare(observed, expected)
+        n = observed_sum
+        dof = max_num - 1
+        # Effect size: Cohen's W (chi2 / N) - reference-free, scales with sample
+        w = float(np.sqrt(chi2_stat / n)) if n > 0 else 0.0
+        cramers_v = self._cramers_v(chi2_stat, n, 2)
+        power = self._power_chi2_gof(w, n, dof)
         
         return {
             "test": "Chi-square Goodness of Fit (Uniform Distribution)",
             "chi2_statistic": round(chi2_stat, 4),
             "p_value": round(p_value, 6),
-            "degrees_of_freedom": max_num - 1,
+            "degrees_of_freedom": dof,
+            "sample_size": n,
             "significant_at_05": p_value < 0.05,
             "significant_at_01": p_value < 0.01,
             "interpretation": "Numbers follow uniform distribution" if p_value >= 0.05 else "Numbers deviate from uniform distribution",
-            "effect_size": "small" if p_value >= 0.05 else ("medium" if p_value < 0.01 else "large")
+            "effect_size": {
+                "cohens_w": round(w, 4),
+                "cramers_v": round(cramers_v, 4),
+                "label": self._effect_size_label(cramers_v, "v")
+            },
+            "power_analysis": {
+                "power_at_05": round(power, 4),
+                "power_interpretation": "Adequate" if power >= 0.8 else "Insufficient to detect small deviations"
+            }
         }
     
     def test_independence(self, df: pd.DataFrame) -> Dict:
@@ -386,15 +451,30 @@ class BalotoAnalyzer:
             p_val = stats.binom.cdf(count, total_draws, p_expected)
             cold_significant.append({"number": num, "count": count, "p_value": round(p_val, 6)})
         
+        # Multiple-comparison corrections (all 43 numbers tested)
+        all_details = hot_significant + cold_significant
+        all_p = [h["p_value"] for h in all_details]
+        bh_reject = self._fdr_bh(all_p, 0.05)
+        bonferroni_threshold = 0.05 / 43
+        for det, rej in zip(all_details, bh_reject):
+            det["fdr_significant_at_05"] = bool(rej)
+            det["bonferroni_significant_at_05"] = det["p_value"] < bonferroni_threshold
+        
+        hot_reject_count = sum(1 for h in hot_significant if h.get("fdr_significant_at_05", False))
+        cold_reject_count = sum(1 for c in cold_significant if c.get("fdr_significant_at_05", False))
+        
         return {
             "hot_numbers_tested": len(hot_significant),
             "cold_numbers_tested": len(cold_significant),
             "hot_significant_at_05": sum(1 for h in hot_significant if h["p_value"] < 0.05),
             "cold_significant_at_05": sum(1 for c in cold_significant if c["p_value"] < 0.05),
+            "hot_fdr_significant_at_05": hot_reject_count,
+            "cold_fdr_significant_at_05": cold_reject_count,
             "hot_details": hot_significant,
             "cold_details": cold_significant,
-            "bonferroni_threshold": 0.05 / 43,  # Multiple comparison correction
-            "interpretation": "Hot/cold patterns may be due to chance" if all(h["p_value"] > 0.05/43 for h in hot_significant) and all(c["p_value"] > 0.05/43 for c in cold_significant) else "Some numbers show significant deviation"
+            "bonferroni_threshold": round(bonferroni_threshold, 6),  # Multiple comparison correction
+            "fdr_method": "Benjamini-Hochberg (FDR ≤ 0.05)",  # Multiple comparison correction
+            "interpretation": "Hot/cold patterns may be due to chance" if all(h["p_value"] > bonferroni_threshold for h in hot_significant) and all(c["p_value"] > bonferroni_threshold for c in cold_significant) else "Some numbers show significant deviation"
         }
     
     def predict_next_draw_probabilities(self, df: pd.DataFrame, lookback: int = 50) -> Dict:
@@ -497,7 +577,8 @@ class BalotoAnalyzer:
     
     # ==================== NON-PARAMETRIC TESTS ====================
     
-    def test_mann_whitney_odd_even(self, df: pd.DataFrame) -> Dict:
+    def test_mann_whitney_odd_even(self, df: pd.DataFrame
+    ) -> Dict:
         """Mann-Whitney U test: Compare sums between odd-heavy and even-heavy draws."""
         odd_heavy_sums = []
         even_heavy_sums = []
@@ -511,7 +592,15 @@ class BalotoAnalyzer:
                 even_heavy_sums.append(total)
         
         if len(odd_heavy_sums) > 10 and len(even_heavy_sums) > 10:
+            n1, n2 = len(odd_heavy_sums), len(even_heavy_sums)
             stat, p_val = stats.mannwhitneyu(odd_heavy_sums, even_heavy_sums, alternative='two-sided')
+            # Effect size r = Z / sqrt(N) via normal approximation, or rank-biserial correlation
+            mu = n1 * n2 / 2.0
+            sigma = np.sqrt(n1 * n2 * (n1 + n2 + 1) / 12.0)
+            z = (stat - mu) / sigma if sigma > 0 else 0.0
+            r_effect = abs(z) / np.sqrt(n1 + n2) if (n1 + n2) > 0 else 0.0
+            # Rank-biserial correlation (alternate effect size, signed)
+            rank_biserial = 1.0 - (2.0 * stat) / (n1 * n2)
             return {
                 "test": "Mann-Whitney U Test (Odd-heavy vs Even-heavy Draw Sums)",
                 "statistic": round(stat, 4),
@@ -519,6 +608,13 @@ class BalotoAnalyzer:
                 "significant_at_05": p_val < 0.05,
                 "median_odd_heavy": round(np.median(odd_heavy_sums), 2),
                 "median_even_heavy": round(np.median(even_heavy_sums), 2),
+                "n_odd_heavy": n1,
+                "n_even_heavy": n2,
+                "effect_size": {
+                    "r": round(r_effect, 4),
+                    "rank_biserial": round(rank_biserial, 4),
+                    "label": self._effect_size_label(r_effect, "r")
+                },
                 "interpretation": "No difference in sum distributions" if p_val >= 0.05 else "Significant difference in sums by parity composition"
             }
         return {"test": "Mann-Whitney U Test", "error": "Insufficient samples"}
@@ -530,11 +626,20 @@ class BalotoAnalyzer:
             position_data.append([nums[pos] for nums in df["numbers"]])
         
         stat, p_val = stats.kruskal(*position_data)
+        n_total = sum(len(p) for p in position_data)
+        k = 5
+        # Eta-squared for Kruskal-Wallis: eta2_H = (H - k + 1) / (N - k)
+        eta_sq = (stat - k + 1) / (n_total - k) if n_total > k else 0.0
         return {
             "test": "Kruskal-Wallis Test (Position Distribution Equality)",
             "statistic": round(stat, 4),
             "p_value": round(p_val, 6),
             "significant_at_05": p_val < 0.05,
+            "n_total": n_total,
+            "effect_size": {
+                "eta_squared": round(max(eta_sq, 0.0), 4),
+                "label": self._effect_size_label(eta_sq, "eta")
+            },
             "interpretation": "All positions have same distribution" if p_val >= 0.05 else "At least one position differs in distribution"
         }
     
@@ -558,13 +663,20 @@ class BalotoAnalyzer:
         min_len = min(len(p) for p in periods)
         if min_len > 5:
             periods_equal = [p[:min_len] for p in periods]
+            k_periods = 4
             stat, p_val = stats.friedmanchisquare(*periods_equal)
+            # Kendall's W for Friedman: W = Q / (k * (n - 1)) where n = subjects, k = conditions
+            kendall_w = stat / (k_periods * (min_len - 1)) if min_len > 1 else 0.0
             return {
                 "test": "Friedman Test (Consecutive Numbers Across Time Periods)",
                 "statistic": round(stat, 4),
                 "p_value": round(p_val, 6),
                 "significant_at_05": p_val < 0.05,
                 "sample_size_per_period": min_len,
+                "effect_size": {
+                    "kendalls_w": round(kendall_w, 4),
+                    "label": self._effect_size_label(kendall_w, "w")
+                },
                 "interpretation": "Consecutive pattern stable over time" if p_val >= 0.05 else "Consecutive pattern changes over time"
             }
         return {"test": "Friedman Test", "error": "Insufficient data"}

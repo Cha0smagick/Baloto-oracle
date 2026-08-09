@@ -1189,6 +1189,66 @@ pre {
 }
 
 /* ==========================================================================
+   Modelos Predictivos
+   ========================================================================== */
+.model-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.model-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    overflow: hidden;
+    transition: all var(--transition-normal);
+}
+
+.model-card:hover {
+    border-color: var(--border-light);
+    box-shadow: var(--shadow-md);
+}
+
+.model-card h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 1rem;
+    font-style: italic;
+}
+
+/* ==========================================================================
+   Accessibility (a11y)
+   ========================================================================== */
+/* Indicador visible de foco SOLO cuando se navega por teclado */
+.keyboard-nav a:focus,
+.keyboard-nav button:focus,
+.keyboard-nav input:focus,
+.keyboard-nav select:focus,
+.keyboard-nav textarea:focus,
+.keyboard-nav [tabindex]:focus {
+    outline: 3px solid var(--accent-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+    animation-duration: 0.001s !important;
+    transition-duration: 0.001s !important;
+    scroll-behavior: auto !important;
+}
+
+/* ==========================================================================
    Utility Classes
    ========================================================================== */
 .sr-only {

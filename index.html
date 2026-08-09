@@ -287,6 +287,69 @@
                     </div>
                 </div>
                 
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Normalidad (Shapiro-Wilk)</h3>
+                        </div>
+                        <div class="test-result" id="shapiro-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Normalidad (Anderson-Darling)</h3>
+                        </div>
+                        <div class="test-result" id="anderson-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Mann-Whitney U (Par/Impar)</h3>
+                        </div>
+                        <div class="test-result" id="mannwhitney-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Kruskal-Wallis (Posición)</h3>
+                        </div>
+                        <div class="test-result" id="kruskal-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Friedman (Sume Consecutivas)</h3>
+                        </div>
+                        <div class="test-result" id="friedman-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Wilcoxon (Emparejado)</h3>
+                        </div>
+                        <div class="test-result" id="wilcoxon-test">
+                            <div class="test-status"></div>
+                            <div class="test-details"></div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Statistical Interpretation -->
                 <div class="chart-card full-width">
                     <div class="chart-header">
@@ -360,6 +423,20 @@
                         <p>Esta metodología pondera la historia completa pero da más peso a tendencias recientes.</p>
                     </div>
                 </details>
+            </div>
+        </section>
+        
+        <!-- Predictive Models Section -->
+        <section id="predictive" class="section" aria-labelledby="predictive-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="predictive-title" class="section-title">Modelos Predictivos</h2>
+                    <p class="section-subtitle">Cinco enfoques estadísticos cruzados para estimar los números más probables</p>
+                </header>
+                
+                <div class="model-grid" id="predictive-models-container">
+                    <p class="empty-state">Cargando modelos predictivos…</p>
+                </div>
             </div>
         </section>
         
