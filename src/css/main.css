@@ -1277,3 +1277,46 @@ html.reduce-motion *::after {
 .align-center { align-items: center; }
 .gap-1 { gap: 0.5rem; }
 .gap-2 { gap: 1rem; }
+
+/* ==========================================================================
+   Error Panel (datos reales no disponibles - sin fallback)
+   ========================================================================== */
+.error-panel {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    min-height: 70vh;
+    padding: 2rem;
+}
+
+.error-panel-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: var(--radius-lg, 1rem);
+    box-shadow: var(--shadow-lg, 0 10px 40px rgba(0, 0, 0, 0.4));
+    padding: 3rem 2.5rem;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+}
+
+.error-panel-icon {
+    display: block;
+    font-size: 3rem;
+    line-height: 1;
+    margin-bottom: 1rem;
+}
+
+.error-panel-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+}
+
+.error-panel-message {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-bottom: 1.75rem;
+}

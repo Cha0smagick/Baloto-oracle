@@ -186,16 +186,38 @@ async function loadData() {
         
         showLoading(false);
         utils.showToast('Datos cargados correctamente', 'success');
+        hideErrorState();
     } catch (error) {
         console.error('Error loading data:', error);
         showLoading(false);
-        utils.showToast('Error cargando datos. Usando datos de ejemplo.', 'error');
-        // Generate fallback data
-        generateFallbackData();
-        initializeCharts();
-        populateLatestDraws();
-        populatePredictions();
-        initializeVisualizer();
+        utils.showToast('Error cargando los datos. Verifique su conexión e intente nuevamente.', 'error');
+        showErrorState();
+    }
+}
+
+function showErrorState() {
+    const main = document.querySelector('.main-content');
+    if (main) main.style.display = 'none';
+
+    const hero = document.querySelector('.hero');
+    if (hero) hero.style.display = 'none';
+
+    const errorPanel = document.getElementById('error-panel');
+    if (errorPanel) {
+        errorPanel.style.display = 'flex';
+    }
+}
+
+function hideErrorState() {
+    const main = document.querySelector('.main-content');
+    if (main) main.style.display = '';
+
+    const hero = document.querySelector('.hero');
+    if (hero) hero.style.display = '';
+
+    const errorPanel = document.getElementById('error-panel');
+    if (errorPanel) {
+        errorPanel.style.display = 'none';
     }
 }
 
@@ -208,69 +230,6 @@ function showLoading(show) {
             wrapper.classList.remove('loading');
         }
     });
-}
-
-function generateFallbackData() {
-    // Generate minimal fallback data for offline/demo
-    const today = new Date();
-    state.data.baloto = [];
-    state.data.revancha = [];
-    
-    for (let i = 0; i < 100; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i * 2);
-        const numbers = Array.from({length: 5}, () => Math.floor(Math.random() * 43) + 1)
-            .sort((a, b) => a - b);
-        const superbalota = Math.floor(Math.random() * 16) + 1;
-        
-        state.data.baloto.push({
-            date: date.toISOString().split('T')[0],
-            numbers,
-            superbalota,
-            jackpot: 4300000000 + i * 100000000
-        });
-        
-        state.data.revancha.push({
-            date: date.toISOString().split('T')[0],
-            numbers: Array.from({length: 5}, () => Math.floor(Math.random() * 43) + 1).sort((a, b) => a - b),
-            superbalota: Math.floor(Math.random() * 16) + 1,
-            jackpot: 2000000 + i * 50000
-        });
-    }
-    
-    state.data.metadata = {
-        total_draws: 100,
-        date_range: { start: '2020-01-01', end: today.toISOString().split('T')[0] },
-        format: '5/43 + 1/16 (Superbalota)'
-    };
-    
-    state.data.analysis = generateFallbackAnalysis();
-}
-
-function generateFallbackAnalysis() {
-    return {
-        descriptive: {
-            number_frequencies: { frequencies: {} },
-            superbalota_frequencies: { frequencies: {} },
-            sum_statistics: { mean: 110, median: 110, std: 20, min: 50, max: 180, percentiles: {25: 95, 50: 110, 75: 125, 90: 140, 95: 150} },
-            odd_even_balance: { distribution: {'3-2': 35, '2-3': 30, '4-1': 15, '1-4': 12, '5-0': 5, '0-5': 3} },
-            high_low_balance: { distribution: {'3-2': 35, '2-3': 30, '4-1': 15, '1-4': 12, '5-0': 5, '0-5': 3} },
-            consecutive_numbers: { distribution: {0: 50, 1: 35, 2: 12, 3: 3}, avg_consecutive: 0.7 },
-            number_gaps: { mean_gap: 8.5, gap_distribution: {1: 20, 2: 30, 3: 25, 4: 15, 5: 10} },
-            repeating_numbers: { distribution: {0: 20, 1: 40, 2: 25, 3: 10, 4: 5}, avg_repeats: 1.3 },
-            jackpot_statistics: { current_jackpot: 50000000000, mean_jackpot: 30000000000, rollover_frequency: 65 }
-        },
-        inferential: {
-            uniformity_test: { p_value: 0.234, significant_at_05: false, interpretation: 'Los números siguen una distribución uniforme' },
-            independence_test: { p_value: 0.567, significant_at_05: false, interpretation: 'Los sorteos son independientes' },
-            hot_cold_significance: { interpretation: 'Patrones calientes/fríos son consistentes con aleatoriedad' },
-            confidence_intervals: { mean_sum_ci: [105, 115], number_frequency_ci: [0.095, 0.135] }
-        },
-        predictions: {
-            next_draw_numbers: { probabilities: {}, top_5_most_likely: [11, 38, 40, 8, 3] },
-            next_superbalota: { probabilities: {}, most_likely: [7, 9, 14] }
-        }
-    };
 }
 
 // ==========================================================================
@@ -1815,6 +1774,18 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSmoothScroll();
     initializeVisitCounter();
     loadData();
+
+    // Reintentar carga de datos sin datos de ejemplo
+    const retryBtn = document.getElementById('error-retry-btn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+            if (retryBtn.disabled) return;
+            retryBtn.disabled = true;
+            loadData().finally(() => {
+                retryBtn.disabled = false;
+            });
+        });
+    }
     
     // Add Chart.js annotation plugin if not loaded
     if (typeof Chart !== 'undefined' && !Chart.registry.plugins.has('annotation')) {
