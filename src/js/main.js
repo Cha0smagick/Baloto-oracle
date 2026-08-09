@@ -337,7 +337,9 @@ function createFrequencyHeatmap() {
     const maxFreq = Math.max(...Object.values(freqData).map(d => d.count));
     const minFreq = Math.min(...Object.values(freqData).map(d => d.count));
     
-    const width = container.node().getBoundingClientRect().width || 600;
+    const node = container.node();
+    if (!node) return;
+    const width = node.getBoundingClientRect().width || 600;
     const cellSize = Math.floor((width - 40) / 7);
     const height = cellSize * 7 + 40;
     
@@ -1258,7 +1260,9 @@ function renderVisualizer() {
         data = data.filter(d => new Date(d.date) >= cutoff);
     }
     
-    const width = container.node().getBoundingClientRect().width || 800;
+    const node = container.node();
+    if (!node) return;
+    const width = node.getBoundingClientRect().width || 800;
     const height = 400;
     const margin = { top: 40, right: 40, bottom: 60, left: 60 };
     
@@ -1797,7 +1801,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Add Chart.js annotation plugin if not loaded
-    if (typeof Chart !== 'undefined' && !Chart.registry.plugins.has('annotation')) {
+    if (typeof Chart !== 'undefined' && !Chart.registry.getPlugin('annotation')) {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js';
         script.onload = () => {
