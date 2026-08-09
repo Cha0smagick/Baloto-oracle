@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Baloto Oracle - Análisis Estadístico Completo de la Lotería Baloto Colombia">
+    <meta name="description" content="Baloto Oracle - AnÃ¡lisis EstadÃ­stico Completo de la LoterÃ­a Baloto Colombia">
     <meta name="theme-color" content="#1a1a2e">
-    <title>Baloto Oracle | Análisis Estadístico y Predicciones</title>
+    <title>Baloto Oracle | AnÃ¡lisis EstadÃ­stico y Predicciones</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,26 +20,26 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="src/css/main.css?v=20260809d">
+    <link rel="stylesheet" href="src/css/main.css?v=20260809c">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>ðŸ”®</text></svg>">
 </head>
 <body>
     <!-- Background Canvas for particle effect -->
     <canvas id="bg-canvas"></canvas>
     
     <!-- Navigation -->
-    <nav class="navbar" role="navigation" aria-label="Navegación principal">
+    <nav class="navbar" role="navigation" aria-label="NavegaciÃ³n principal">
         <div class="nav-container">
             <a href="#" class="nav-logo" aria-label="Baloto Oracle - Inicio">
-                <span class="logo-icon">🔮</span>
+                <span class="logo-icon">ðŸ”®</span>
                 <span class="logo-text">Baloto Oracle</span>
             </a>
             <div class="nav-links">
                 <a href="#overview" class="nav-link" data-section="overview">Resumen</a>
-                <a href="#descriptive" class="nav-link" data-section="descriptive">Estadística Descriptiva</a>
-                <a href="#inferential" class="nav-link" data-section="inferential">Estadística Inferencial</a>
+                <a href="#descriptive" class="nav-link" data-section="descriptive">EstadÃ­stica Descriptiva</a>
+                <a href="#inferential" class="nav-link" data-section="inferential">EstadÃ­stica Inferencial</a>
                 <a href="#predictions" class="nav-link" data-section="predictions">Predicciones</a>
                 <a href="#visualizer" class="nav-link" data-section="visualizer">Visualizador</a>
             </div>
@@ -49,7 +49,7 @@
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                     </svg>
-                    <span id="visit-count">—</span>
+                    <span id="visit-count">â€”</span>
                 </div>
                 <button id="theme-toggle" class="btn-icon" aria-label="Cambiar tema" title="Cambiar tema">
                     <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -67,7 +67,7 @@
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                     </svg>
                 </button>
-                <button id="mobile-menu-btn" class="btn-icon" aria-label="Menú móvil" aria-expanded="false">
+                <button id="mobile-menu-btn" class="btn-icon" aria-label="MenÃº mÃ³vil" aria-expanded="false">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="3" y1="12" x2="21" y2="12"></line>
                         <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -87,33 +87,33 @@
             </div>
             <h1 class="hero-title">
                 <span class="title-main">Baloto Oracle</span>
-                <span class="title-sub">Análisis Estadístico Completo</span>
+                <span class="title-sub">AnÃ¡lisis EstadÃ­stico Completo</span>
             </h1>
             <p class="hero-description">
-                El oráculo definitivo para la lotería Baloto Colombia. Análisis descriptivo e inferencial,
-                visualización de patrones, frecuencias históricas y probabilidades bayesianas para el próximo sorteo.
+                El orÃ¡culo definitivo para la loterÃ­a Baloto Colombia. AnÃ¡lisis descriptivo e inferencial,
+                visualizaciÃ³n de patrones, frecuencias histÃ³ricas y probabilidades bayesianas para el prÃ³ximo sorteo.
             </p>
             <div class="hero-stats">
                 <div class="stat-card">
-                    <span class="stat-value" id="total-draws">—</span>
+                    <span class="stat-value" id="total-draws">â€”</span>
                     <span class="stat-label">Sorteos Analizados</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value" id="date-range">—</span>
+                    <span class="stat-value" id="date-range">â€”</span>
                     <span class="stat-label">Rango de Fechas</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value" id="last-update">—</span>
-                    <span class="stat-label">Última Actualización</span>
+                    <span class="stat-value" id="last-update">â€”</span>
+                    <span class="stat-label">Ãšltima ActualizaciÃ³n</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value" id="current-jackpot">—</span>
+                    <span class="stat-value" id="current-jackpot">â€”</span>
                     <span class="stat-label">Jackpot Actual</span>
                 </div>
             </div>
             <div class="hero-actions">
                 <a href="#predictions" class="btn btn-primary">Ver Predicciones</a>
-                <a href="#descriptive" class="btn btn-secondary">Explorar Estadísticas</a>
+                <a href="#descriptive" class="btn btn-secondary">Explorar EstadÃ­sticas</a>
             </div>
         </div>
         <div class="hero-visual">
@@ -129,21 +129,21 @@
         <section id="descriptive" class="section" aria-labelledby="descriptive-title">
             <div class="container">
                 <header class="section-header">
-                    <h2 id="descriptive-title" class="section-title">Estadística Descriptiva</h2>
-                    <p class="section-subtitle">Análisis completo de frecuencias, posiciones, sumas y patrones históricos</p>
+                    <h2 id="descriptive-title" class="section-title">EstadÃ­stica Descriptiva</h2>
+                    <p class="section-subtitle">AnÃ¡lisis completo de frecuencias, posiciones, sumas y patrones histÃ³ricos</p>
                 </header>
                 
                 <!-- Frequency Heatmap -->
                 <div class="chart-grid">
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3>Mapa de Calor - Frecuencia de Números (1-43)</h3>
+                            <h3>Mapa de Calor - Frecuencia de NÃºmeros (1-43)</h3>
                             <div class="chart-controls">
                                 <select id="freq-period" class="control-select">
                                     <option value="all">Todo el historial</option>
-                                    <option value="50">Últimos 50 sorteos</option>
-                                    <option value="20">Últimos 20 sorteos</option>
-                                    <option value="10">Últimos 10 sorteos</option>
+                                    <option value="50">Ãšltimos 50 sorteos</option>
+                                    <option value="20">Ãšltimos 20 sorteos</option>
+                                    <option value="10">Ãšltimos 10 sorteos</option>
                                 </select>
                             </div>
                         </div>
@@ -168,7 +168,7 @@
                 <div class="chart-grid">
                     <div class="chart-card full-width">
                         <div class="chart-header">
-                            <h3>Análisis por Posición (1ª a 5ª bola)</h3>
+                            <h3>AnÃ¡lisis por PosiciÃ³n (1Âª a 5Âª bola)</h3>
                         </div>
                         <div class="chart-wrapper">
                             <canvas id="position-chart"></canvas>
@@ -180,7 +180,7 @@
                 <div class="chart-grid three-col">
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3>Distribución de Sumas</h3>
+                            <h3>DistribuciÃ³n de Sumas</h3>
                         </div>
                         <div class="chart-wrapper">
                             <canvas id="sum-chart"></canvas>
@@ -209,7 +209,7 @@
                 <div class="chart-grid">
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3>Números Consecutivos</h3>
+                            <h3>NÃºmeros Consecutivos</h3>
                         </div>
                         <div class="chart-wrapper">
                             <canvas id="consecutive-chart"></canvas>
@@ -217,7 +217,7 @@
                     </div>
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3>Gaps entre Números</h3>
+                            <h3>Gaps entre NÃºmeros</h3>
                         </div>
                         <div class="chart-wrapper">
                             <canvas id="gaps-chart"></canvas>
@@ -241,8 +241,8 @@
         <section id="inferential" class="section" aria-labelledby="inferential-title">
             <div class="container">
                 <header class="section-header">
-                    <h2 id="inferential-title" class="section-title">Estadística Inferencial</h2>
-                    <p class="section-subtitle">Pruebas de hipótesis, intervalos de confianza y significancia estadística</p>
+                    <h2 id="inferential-title" class="section-title">EstadÃ­stica Inferencial</h2>
+                    <p class="section-subtitle">Pruebas de hipÃ³tesis, intervalos de confianza y significancia estadÃ­stica</p>
                 </header>
                 
                 <div class="chart-grid">
@@ -269,7 +269,7 @@
                 <div class="chart-grid">
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3>Significancia Números Calientes/Fríos</h3>
+                            <h3>Significancia NÃºmeros Calientes/FrÃ­os</h3>
                         </div>
                         <div class="test-result" id="hotcold-test">
                             <div class="test-status"></div>
@@ -320,7 +320,7 @@
                     </div>
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3>Kruskal-Wallis (Posición)</h3>
+                            <h3>Kruskal-Wallis (PosiciÃ³n)</h3>
                         </div>
                         <div class="test-result" id="kruskal-test">
                             <div class="test-status"></div>
@@ -353,7 +353,7 @@
                 <!-- Statistical Interpretation -->
                 <div class="chart-card full-width">
                     <div class="chart-header">
-                        <h3>Interpretación Estadística</h3>
+                        <h3>InterpretaciÃ³n EstadÃ­stica</h3>
                     </div>
                     <div class="interpretation" id="interpretation"></div>
                 </div>
@@ -364,12 +364,12 @@
         <section id="predictions" class="section" aria-labelledby="predictions-title">
             <div class="container">
                 <header class="section-header">
-                    <h2 id="predictions-title" class="section-title">Predicciones para el Próximo Sorteo</h2>
-                    <p class="section-subtitle">Probabilidades bayesianas basadas en análisis histórico (Solo fines educativos)</p>
+                    <h2 id="predictions-title" class="section-title">Predicciones para el PrÃ³ximo Sorteo</h2>
+                    <p class="section-subtitle">Probabilidades bayesianas basadas en anÃ¡lisis histÃ³rico (Solo fines educativos)</p>
                 </header>
                 
                 <div class="disclaimer-banner">
-                    ⚠️ <strong>Aviso importante:</strong> Los sorteos de lotería son eventos aleatorios independientes. 
+                    âš ï¸ <strong>Aviso importante:</strong> Los sorteos de loterÃ­a son eventos aleatorios independientes. 
                     El rendimiento pasado no predice resultados futuros. Juega responsablemente.
                 </div>
                 
@@ -377,7 +377,7 @@
                     <!-- Top Numbers Prediction -->
                     <div class="chart-card full-width">
                         <div class="chart-header">
-                            <h3>Top 10 Números con Mayor Probabilidad</h3>
+                            <h3>Top 10 NÃºmeros con Mayor Probabilidad</h3>
                         </div>
                         <div class="prediction-grid" id="top-numbers-prediction"></div>
                     </div>
@@ -385,7 +385,7 @@
                     <!-- Superbalota Prediction -->
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3>Superbalota Más Probable</h3>
+                            <h3>Superbalota MÃ¡s Probable</h3>
                         </div>
                         <div class="prediction-grid" id="superbalota-prediction"></div>
                     </div>
@@ -393,7 +393,7 @@
                     <!-- Recommended Combination -->
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3>Combinación Sugerida</h3>
+                            <h3>CombinaciÃ³n Sugerida</h3>
                         </div>
                         <div class="recommended-combo" id="recommended-combo"></div>
                     </div>
@@ -402,7 +402,7 @@
                 <!-- Probability Distribution Chart -->
                 <div class="chart-card full-width">
                     <div class="chart-header">
-                        <h3>Distribución Completa de Probabilidades</h3>
+                        <h3>DistribuciÃ³n Completa de Probabilidades</h3>
                     </div>
                     <div class="chart-wrapper">
                         <canvas id="probability-chart"></canvas>
@@ -411,16 +411,16 @@
                 
                 <!-- Methodology -->
                 <details class="methodology">
-                    <summary>Metodología de Predicción</summary>
+                    <summary>MetodologÃ­a de PredicciÃ³n</summary>
                     <div class="methodology-content">
                         <p>Utilizamos <strong>inferencia bayesiana</strong> con prior conjugado Beta-Binomial:</p>
                         <ul>
-                            <li><strong>Prior:</strong> Frecuencias históricas completas (distribución Beta)</li>
-                            <li><strong>Verosimilitud:</strong> Frecuencias recientes (ventana móvil de 50 sorteos)</li>
-                            <li><strong>Posterior:</strong> Actualización bayesiana combinando prior + datos recientes</li>
-                            <li><strong>Normalización:</strong> Probabilidades ajustadas para sumar 5 (números esperados por sorteo)</li>
+                            <li><strong>Prior:</strong> Frecuencias histÃ³ricas completas (distribuciÃ³n Beta)</li>
+                            <li><strong>Verosimilitud:</strong> Frecuencias recientes (ventana mÃ³vil de 50 sorteos)</li>
+                            <li><strong>Posterior:</strong> ActualizaciÃ³n bayesiana combinando prior + datos recientes</li>
+                            <li><strong>NormalizaciÃ³n:</strong> Probabilidades ajustadas para sumar 5 (nÃºmeros esperados por sorteo)</li>
                         </ul>
-                        <p>Esta metodología pondera la historia completa pero da más peso a tendencias recientes.</p>
+                        <p>Esta metodologÃ­a pondera la historia completa pero da mÃ¡s peso a tendencias recientes.</p>
                     </div>
                 </details>
             </div>
@@ -431,11 +431,11 @@
             <div class="container">
                 <header class="section-header">
                     <h2 id="predictive-title" class="section-title">Modelos Predictivos</h2>
-                    <p class="section-subtitle">Cinco enfoques estadísticos cruzados para estimar los números más probables</p>
+                    <p class="section-subtitle">Cinco enfoques estadÃ­sticos cruzados para estimar los nÃºmeros mÃ¡s probables</p>
                 </header>
                 
                 <div class="model-grid" id="predictive-models-container">
-                    <p class="empty-state">Cargando modelos predictivos…</p>
+                    <p class="empty-state">Cargando modelos predictivosâ€¦</p>
                 </div>
             </div>
         </section>
@@ -458,20 +458,20 @@
                         </select>
                     </div>
                     <div class="control-group">
-                        <label for="viz-period">Período:</label>
+                        <label for="viz-period">PerÃ­odo:</label>
                         <select id="viz-period" class="control-select">
                             <option value="all">Todo el historial</option>
-                            <option value="365">Último año</option>
-                            <option value="180">Últimos 6 meses</option>
-                            <option value="90">Últimos 3 meses</option>
-                            <option value="30">Último mes</option>
+                            <option value="365">Ãšltimo aÃ±o</option>
+                            <option value="180">Ãšltimos 6 meses</option>
+                            <option value="90">Ãšltimos 3 meses</option>
+                            <option value="30">Ãšltimo mes</option>
                         </select>
                     </div>
                     <div class="control-group">
-                        <label for="viz-type">Visualización:</label>
+                        <label for="viz-type">VisualizaciÃ³n:</label>
                         <select id="viz-type" class="control-select">
                             <option value="frequency">Frecuencias</option>
-                            <option value="timeline">Línea temporal</option>
+                            <option value="timeline">LÃ­nea temporal</option>
                             <option value="patterns">Patrones</option>
                             <option value="jackpot">Jackpots</option>
                         </select>
@@ -486,7 +486,7 @@
                 <!-- Latest Draws Table -->
                 <div class="chart-card full-width">
                     <div class="chart-header">
-                        <h3>Últimos Sorteos</h3>
+                        <h3>Ãšltimos Sorteos</h3>
                     </div>
                     <div class="table-wrapper">
                         <table id="latest-draws-table" class="data-table">
@@ -494,7 +494,7 @@
                                 <tr>
                                     <th>Fecha</th>
                                     <th>Juego</th>
-                                    <th>Números</th>
+                                    <th>NÃºmeros</th>
                                     <th>Superbalota</th>
                                     <th>Jackpot</th>
                                 </tr>
@@ -510,11 +510,11 @@
     <!-- Error State (solo se muestra si falla la carga de datos reales) -->
     <div id="error-panel" class="error-panel" role="alert" style="display:none;">
         <div class="error-panel-card">
-            <span class="error-panel-icon" aria-hidden="true">⚠️</span>
+            <span class="error-panel-icon" aria-hidden="true">âš ï¸</span>
             <h2 class="error-panel-title">No se pudieron cargar los datos</h2>
             <p class="error-panel-message">
-                No hay datos de ejemplo: esta aplicación utiliza exclusivamente los resultados oficiales publicados.
-                Verifica tu conexión a internet e inténtalo nuevamente.
+                No hay datos de ejemplo: esta aplicaciÃ³n utiliza exclusivamente los resultados oficiales publicados.
+                Verifica tu conexiÃ³n a internet e intÃ©ntalo nuevamente.
             </p>
             <button id="error-retry-btn" type="button" class="btn btn-primary">Reintentar</button>
         </div>
@@ -525,9 +525,9 @@
         <div class="container">
             <div class="footer-grid">
                 <div class="footer-brand">
-                    <span class="logo-icon">🔮</span>
+                    <span class="logo-icon">ðŸ”®</span>
                     <span>Baloto Oracle</span>
-                    <p>Análisis estadístico avanzado para la lotería Baloto Colombia</p>
+                    <p>AnÃ¡lisis estadÃ­stico avanzado para la loterÃ­a Baloto Colombia</p>
                 </div>
                 <div class="footer-links">
                     <h4>Enlaces</h4>
@@ -538,7 +538,7 @@
                     </ul>
                 </div>
                 <div class="footer-links">
-                    <h4>Estadísticas</h4>
+                    <h4>EstadÃ­sticas</h4>
                     <ul>
                         <li><a href="#descriptive">Descriptiva</a></li>
                         <li><a href="#inferential">Inferencial</a></li>
@@ -546,13 +546,13 @@
                     </ul>
                 </div>
                 <div class="footer-disclaimer">
-                    <p><strong>Juego Responsable:</strong> La ludopatía es una enfermedad. Si necesitas ayuda, contacta líneas de apoyo locales.</p>
-                    <p>Solo mayores de 18 años. Juega con moderación.</p>
+                    <p><strong>Juego Responsable:</strong> La ludopatÃ­a es una enfermedad. Si necesitas ayuda, contacta lÃ­neas de apoyo locales.</p>
+                    <p>Solo mayores de 18 aÃ±os. Juega con moderaciÃ³n.</p>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>© 2024 Baloto Oracle - Código abierto bajo licencia MIT | Datos de fuentes públicas</p>
-                <p>Desplegado en GitHub Pages | Actualización automática vía GitHub Actions</p>
+                <p>Â© 2024 Baloto Oracle - CÃ³digo abierto bajo licencia MIT | Datos de fuentes pÃºblicas</p>
+                <p>Desplegado en GitHub Pages | ActualizaciÃ³n automÃ¡tica vÃ­a GitHub Actions</p>
             </div>
         </div>
     </footer>
@@ -561,7 +561,7 @@
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
     
     <!-- Scripts -->
-    <script src="src/js/data.js?v=20260809d"></script>
-    <script type="module" src="src/js/main.js?v=20260809d"></script>
+    <script src="src/js/data.js?v=20260809c"></script>
+    <script type="module" src="src/js/main.js?v=20260809c"></script>
 </body>
 </html>

@@ -187,17 +187,55 @@ async function loadData() {
         state.data.baloto.sort((a, b) => new Date(b.date) - new Date(a.date));
         state.data.revancha.sort((a, b) => new Date(b.date) - new Date(a.date));
         
-        updateHeroStats();
-        initializeCharts();
-        populateLatestDraws();
-        populatePredictions();
-        initializeVisualizer();
+        // Cada paso de render se ejecuta de forma aislada: si una librería externa
+        // (Chart.js/d3 desde CDN) no está disponible u offline, se muestra el resto
+        // de la página con un aviso, en lugar de reemplazar todo por el panel de error.
+        const failedSections = [];
+        try {
+            updateHeroStats();
+        } catch (e) {
+            failedSections.push('Estadísticas');
+            console.error('updateHeroStats falló:', e);
+        }
+        if (typeof Chart === 'undefined' || typeof d3 === 'undefined') {
+            console.warn('Chart.js/d3 no disponibles (CDN bloqueado/offline); se omiten gráficos y visualizador.');
+            failedSections.push('Gráficos y visualizaciones');
+        } else {
+            try {
+                initializeCharts();
+            } catch (e) {
+                failedSections.push('Gráficos');
+                console.error('initializeCharts falló:', e);
+            }
+            try {
+                initializeVisualizer();
+            } catch (e) {
+                failedSections.push('Visualizador');
+                console.error('initializeVisualizer falló:', e);
+            }
+        }
+        try {
+            populateLatestDraws();
+        } catch (e) {
+            failedSections.push('Últimos sorteos');
+            console.error('populateLatestDraws falló:', e);
+        }
+        try {
+            populatePredictions();
+        } catch (e) {
+            failedSections.push('Predicciones');
+            console.error('populatePredictions falló:', e);
+        }
         
         showLoading(false);
-        utils.showToast('Datos cargados correctamente', 'success');
         hideErrorState();
+        if (failedSections.length === 0) {
+            utils.showToast('Datos cargados correctamente', 'success');
+        } else {
+            utils.showToast(`Algunas secciones no se pudieron renderizar: ${failedSections.join(', ')}. Verifique su conexión a internet.`, 'error');
+        }
     } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('Error cargando los datos:', error);
         showLoading(false);
         utils.showToast('Error cargando los datos. Verifique su conexión e intente nuevamente.', 'error');
         showErrorState();
