@@ -353,7 +353,6 @@ function initializeCharts() {
     renderInterpretation();
     renderPredictiveModeling();
     renderValidation();
-    renderPredictionDashboard();
 }
 
 function getChartColors(count, scheme = 'primary') {
@@ -1445,6 +1444,7 @@ function renderValidation() {
     container.innerHTML = cardsHtml + `
         <p class="combo-info" style="margin-top: 1rem;">⚠️ La validación confirma que los sorteos son uniformes e independientes: ninguna técnica predictiva supera el azar de forma significativa. Las predicciones son solo informativas.</p>
     `;
+    renderPredictionDashboard();
 }
 // ==========================================================================
 // Latest Draws Table
