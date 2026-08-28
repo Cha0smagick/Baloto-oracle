@@ -2,11 +2,11 @@
 
 > **Análisis Estadístico Completo de la Lotería Baloto Colombia**
 
-[![Deploy Status](https://github.com/USER/baloto-oracle/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)](https://github.com/USER/baloto-oracle/actions)
-[![CI Status](https://github.com/USER/baloto-oracle/workflows/CI%20Checks/badge.svg)](https://github.com/USER/baloto-oracle/actions)
+[![Deploy Status](https://github.com/Cha0smagick/Baloto-oracle/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)](https://github.com/Cha0smagick/Baloto-oracle/actions)
+[![CI Status](https://github.com/Cha0smagick/Baloto-oracle/workflows/CI%20Checks/badge.svg)](https://github.com/Cha0smagick/Baloto-oracle/actions)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Visits](https://visitor-badge.laobi.icu/badge?page_id=USER.baloto-oracle)](https://github.com/USER/baloto-oracle)
+[![Visits](https://visitor-badge.laobi.icu/badge?page_id=Cha0smagick.baloto-oracle)](https://github.com/Cha0smagick/Baloto-oracle)
 
 Un oráculo interactivo para la lotería **Baloto Colombia** que aplica estadística descriptiva e inferencial completa (parámetros y no paramétricos), visualiza patrones históricos, calcula probabilidades bayesianas e implementa modelado predictivo múltiple para el próximo sorteo.
 
@@ -65,13 +65,13 @@ Un oráculo interactivo para la lotería **Baloto Colombia** que aplica estadís
 
 ## 🚀 Demo en Vivo
 
-**[https://USER.github.io/baloto-oracle/](https://USER.github.io/baloto-oracle/)**
+**[https://cha0smagick.github.io/Baloto-oracle/](https://cha0smagick.github.io/Baloto-oracle/)**
 
 ## 📦 Instalación Local
 
 ```bash
 # Clonar repositorio
-git clone https://github.com/USER/baloto-oracle.git
+git clone https://github.com/Cha0smagick/Baloto-oracle.git
 cd baloto-oracle
 
 # Instalar dependencias Python
@@ -296,10 +296,10 @@ MIT License — ver [LICENSE](LICENSE) para detalles.
 
 **Hecho con ❤️, 📊 y 🧮 para la comunidad de datos de Colombia y el mundo**
 
-[![GitHub Stars](https://img.shields.io/github/stars/USER/baloto-oracle?style=social)](https://github.com/USER/baloto-oracle/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/USER/baloto-oracle?style=social)](https://github.com/USER/baloto-oracle/network/members)
-[![GitHub Issues](https://img.shields.io/github/issues/USER/baloto-oracle)](https://github.com/USER/baloto-oracle/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/Cha0smagick/Baloto-oracle?style=social)](https://github.com/Cha0smagick/Baloto-oracle/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/Cha0smagick/Baloto-oracle?style=social)](https://github.com/Cha0smagick/Baloto-oracle/network/members)
+[![GitHub Issues](https://img.shields.io/github/issues/Cha0smagick/Baloto-oracle)](https://github.com/Cha0smagick/Baloto-oracle/issues)
 
-[Reportar Issue](https://github.com/USER/baloto-oracle/issues) • [Solicitar Feature](https://github.com/USER/baloto-oracle/issues/new) • [Ver Changelog](CHANGELOG.md)
+[Reportar Issue](https://github.com/Cha0smagick/Baloto-oracle/issues) • [Solicitar Feature](https://github.com/Cha0smagick/Baloto-oracle/issues/new) • [Ver Changelog](CHANGELOG.md)
 
 </div>
