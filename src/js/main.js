@@ -1433,8 +1433,8 @@ function renderValidation() {
 
     const dashboardHtml = '<div class="model-card"><h4>🎱 Tablero de Predicciones y Certeza</h4>' +
         '<p class="combo-info">Predicciones para el próximo sorteo: el porcentaje es la probabilidad estimada (rojo = menor, verde = mayor).</p>' +
-        '<div class="metric-list">' + ballRows + '</div>' +
-        (sbRows ? '<p class="combo-info" style="margin-top:0.75rem;">Superbalota:</p><div class="metric-list">' + sbRows + '</div>' : '') +
+'<div class="pred-balls-group">' + ballRows + '</div>' +
+(sbRows ? '<p class="combo-info" style="margin-top:0.75rem;">Superbalota:</p><div class="pred-balls-group">' + sbRows + '</div>' : '') +
         '<div class="tests-summary"><span class="tests-header">Resumen de pruebas (' + passCount + '/' + totalTests + ' pasadas)</span>' + tests.join('') + '</div>' +
         '<div class="card-conclusion">Las pruebas confirman sorteos uniformes e independientes: las predicciones no superan el azar y son solo informativas.</div></div>';
 
