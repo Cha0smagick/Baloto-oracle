@@ -23,7 +23,8 @@ def convert_to_serializable(obj):
     if isinstance(obj, (np.integer, np.int64, np.int32)):
         return int(obj)
     if isinstance(obj, (np.floating, np.float64, np.float32)):
-        return float(obj)
+        val = float(obj)
+        return None if (np.isnan(val) or np.isinf(val)) else val
     if isinstance(obj, np.bool_):
         return bool(obj)
     if isinstance(obj, np.ndarray):
@@ -34,6 +35,17 @@ def convert_to_serializable(obj):
         return {k: convert_to_serializable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [convert_to_serializable(v) for v in obj]
+    return obj
+
+
+def _sanitize_json(obj):
+    """Recursively replace NaN/Infinity with None so the output is strict JSON."""
+    if isinstance(obj, float):
+        return None if (np.isnan(obj) or np.isinf(obj)) else obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_json(v) for v in obj]
     return obj
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -951,7 +963,7 @@ class BalotoAnalyzer:
         # Save results
         output_path = self.data_dir / "analysis_results.json"
         with open(output_path, "w") as f:
-            json.dump(convert_to_serializable(self.results), f, indent=2)
+            json.dump(_sanitize_json(convert_to_serializable(self.results)), f, indent=2, allow_nan=False)
         
         logger.info(f"Analysis complete! Results saved to {output_path}")
         return self.results

@@ -1,0 +1,217 @@
+{
+  "generated_at": "2026-08-28T00:27:26.398795+00:00",
+  "data": {
+    "source": "https://www.baloto.com/resultados (sitio oficial, scraping paginado)",
+    "draws": 621,
+    "range": "2021-05-01 -> 2026-08-26"
+  },
+  "methodology": {
+    "blind_test": "Walk-forward out-of-sample: entrenar solo con sorteos anteriores y comparar top-10/top-5 contra el resultado real; contraste con Monte Carlo y test binomial exacto.",
+    "supervised": "Random Forest y Regresi\u00f3n Log\u00edstica por n\u00famero (1..43) con split walk-forward; AUC vs 0.5 y lift vs 5/43.",
+    "unsupervised": "PCA (varianza explicada), K-Means (silhouette) y chi2 de co-ocurrencia de pares con FDR.",
+    "inferential_exact": "Fisher, KS, Cram\u00e9r-von Mises, runs de Wald-Wolfowitz, Ljung-Box, ANOVA de una v\u00eda, Poisson (gaps) y entrop\u00eda de Shannon."
+  },
+  "blind_test": {
+    "bayesiano": {
+      "test_draws": 150,
+      "mean_hits_top5": 0.56,
+      "mean_hits_top10": 1.12,
+      "expected_hits_top5_random": 0.5814,
+      "expected_hits_top10_random": 1.1628,
+      "binom_pvalue_top5": "0.6593",
+      "binom_pvalue_top10": "0.7234",
+      "exceeds_chance_top10": false
+    },
+    "markov": {
+      "test_draws": 150,
+      "mean_hits_top5": 0.5867,
+      "mean_hits_top10": 1.1133,
+      "expected_hits_top5_random": 0.5814,
+      "expected_hits_top10_random": 1.1628,
+      "binom_pvalue_top5": "0.4810",
+      "binom_pvalue_top10": "0.7518",
+      "exceeds_chance_top10": false
+    },
+    "monte_carlo_baseline": {
+      "simulations": 2000,
+      "mean_hits_top10": 1.1617,
+      "std_hits_top10": 0.0738,
+      "bayesiano_vs_mc_zscore": -6.921,
+      "bayesiano_vs_mc_pvalue": "4.48e-12"
+    },
+    "conclusion": "Los modelos NO superan significativamente el azar (p >= 0.05): no se detecta poder predictivo en los sorteos, consistente con eventos aleatorios independientes."
+  },
+  "supervised": {
+    "random_forest": {
+      "mean_auc": 0.5224,
+      "auc_null_hypothesis": 0.5,
+      "numbers_with_valid_auc": 43,
+      "mean_hits_top5": 0.6267,
+      "expected_hits_top5_random": 0.5814,
+      "lift_vs_random": 1.078
+    },
+    "logistic_regression": {
+      "mean_auc": 0.5067,
+      "auc_null_hypothesis": 0.5,
+      "numbers_with_valid_auc": 43,
+      "mean_hits_top5": 0.6333,
+      "expected_hits_top5_random": 0.5814,
+      "lift_vs_random": 1.089
+    },
+    "train_draws": 470,
+    "test_draws": 150,
+    "baseline_appearance_rate": 0.1163,
+    "conclusion": "AUC medio ~0.5 y lift ~1.0: los clasificadores no encuentran patr\u00f3n aprovechable m\u00e1s all\u00e1 del azar."
+  },
+  "unsupervised": {
+    "pca": {
+      "explained_variance_ratio": [
+        0.3122,
+        0.2612,
+        0.1447,
+        0.1397
+      ],
+      "cumulative_variance": [
+        0.3122,
+        0.5734,
+        0.7181,
+        0.8578
+      ],
+      "interpretation": "Si la varianza est\u00e1 repartida en muchos componentes, no hay estructura latente dominante."
+    },
+    "kmeans": {
+      "silhouette_by_k": {
+        "2": 0.2139,
+        "3": 0.2114,
+        "4": 0.1734,
+        "5": 0.1777,
+        "6": 0.1767
+      },
+      "inertia_by_k": {
+        "2": 3459.67,
+        "3": 2852.38,
+        "4": 2564.93,
+        "5": 2360.41,
+        "6": 2190.34
+      },
+      "interpretation": "Silhouette ~0 indica clusters no separables (sorteos intercambiables)."
+    },
+    "pair_cooccurrence": {
+      "tested_pairs": 652,
+      "top_pairs": [
+        {
+          "pair": "1-3",
+          "observed": 0.0097,
+          "expected": 0.1974,
+          "chi2": 356.295,
+          "pvalue": "1.80e-79",
+          "fdr_significant": true
+        },
+        {
+          "pair": "1-4",
+          "observed": 0.0129,
+          "expected": 0.2091,
+          "chi2": 385.193,
+          "pvalue": "9.21e-86",
+          "fdr_significant": true
+        },
+        {
+          "pair": "1-5",
+          "observed": 0.0097,
+          "expected": 0.2357,
+          "chi2": 508.044,
+          "pvalue": "1.69e-112",
+          "fdr_significant": true
+        },
+        {
+          "pair": "1-6",
+          "observed": 0.0129,
+          "expected": 0.1767,
+          "chi2": 280.578,
+          "pvalue": "5.62e-63",
+          "fdr_significant": true
+        },
+        {
+          "pair": "1-7",
+          "observed": 0.0145,
+          "expected": 0.2003,
+          "chi2": 347.952,
+          "pvalue": "1.18e-77",
+          "fdr_significant": true
+        }
+      ],
+      "interpretation": "Co-ocurrencias observadas ~ esperadas bajo independencia y sin significancia FDR \u2192 sin asociaci\u00f3n entre n\u00fameros."
+    },
+    "conclusion": "Posible estructura d\u00e9bil: revisar PCA/KMeans/correlaciones en detalle."
+  },
+  "inferential_exact": {
+    "kolmogorov_smirnov_uniformity": {
+      "statistic": 0.0192,
+      "pvalue": "0.2020"
+    },
+    "cramer_von_mises": {
+      "statistic": 0.1631,
+      "pvalue": "0.3520"
+    },
+    "runs_wald_wolfowitz": {
+      "parity": {
+        "z": -0.354,
+        "pvalue": "0.7230"
+      },
+      "high_low": {
+        "z": -0.446,
+        "pvalue": "0.6553"
+      },
+      "note": "p >= 0.05 \u2192 secuencias compatibles con aleatoriedad."
+    },
+    "ljung_box_sum_series": {
+      "lag1": {
+        "stat": 1.577,
+        "pvalue": "0.2092"
+      },
+      "lag5": {
+        "stat": 4.394,
+        "pvalue": "0.4942"
+      },
+      "lag10": {
+        "stat": 5.183,
+        "pvalue": "0.8787"
+      },
+      "lag20": {
+        "stat": 16.03,
+        "pvalue": "0.7147"
+      }
+    },
+    "anova_positions": {
+      "f_statistic": 1799.43,
+      "pvalue": "0.00e+00",
+      "means": [
+        7.56,
+        14.506,
+        21.894,
+        29.496,
+        36.887
+      ]
+    },
+    "fisher_exact_top_pair": {
+      "pair": "32-33",
+      "cooccurrences": 14,
+      "odds_ratio": 1.736,
+      "pvalue": "0.0944"
+    },
+    "poisson_gaps": {
+      "mean_gap_mean": 8.54,
+      "mean_gap_variance": 63.38,
+      "theoretical_geometric_variance": 65.36,
+      "mean_dispersion_pvalue": "0.5761",
+      "note": "Si varianza \u2248 varianza geom\u00e9trica te\u00f3rica (1-p)/p\u00b2 y p alto, los gaps siguen la distribuci\u00f3n geom\u00e9trica esperada para apariciones independientes (Bernoulli por sorteo)."
+    },
+    "shannon_entropy": {
+      "entropy_bits": 5.4204,
+      "max_entropy_bits": 5.4263,
+      "ratio": 0.9989,
+      "note": "Ratio \u2248 1 \u2192 frecuencias casi uniformes (m\u00e1xima incertidumbre, sin favoritos)."
+    },
+    "conclusion": "Todos los tests de aleatoriedad/uniformidad/independencia son consistentes con sorteos uniformes e independientes."
+  }
+}

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -15,12 +15,17 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2.0.0/dist/chartjs-chart-matrix.min.js"></script>
+    <!-- Chart.js Annotation plugin: carga estática ANTES de crear cualquier chart.
+         Si el plugin se registra después de que un chart ya existe, ese chart nunca recibe
+         estado (beforeInit) y el primer redraw crashea en beforeDraw con
+         "Cannot read properties of undefined (reading 'visibleElements')". -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     
     <!-- D3.js for advanced visualizations -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="src/css/main.css?v=20260809d">
+    <link rel="stylesheet" href="src/css/main.css?v=20260829">
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
@@ -41,6 +46,7 @@
                 <a href="#descriptive" class="nav-link" data-section="descriptive">Estadística Descriptiva</a>
                 <a href="#inferential" class="nav-link" data-section="inferential">Estadística Inferencial</a>
                 <a href="#predictions" class="nav-link" data-section="predictions">Predicciones</a>
+                        <a href="#validation" class="nav-link" data-section="validation">Validación</a>
                 <a href="#visualizer" class="nav-link" data-section="visualizer">Visualizador</a>
             </div>
             <div class="nav-controls">
@@ -332,7 +338,7 @@
                 <div class="chart-grid">
                     <div class="chart-card">
                         <div class="chart-header">
-                            <h3>Friedman (Sume Consecutivas)</h3>
+                            <h3>Friedman (Sumas Consecutivas)</h3>
                         </div>
                         <div class="test-result" id="friedman-test">
                             <div class="test-status"></div>
@@ -440,6 +446,20 @@
             </div>
         </section>
         
+        <!-- Statistical Validation Section -->
+        <section id="validation" class="section" aria-labelledby="validation-title">
+            <div class="container">
+                <header class="section-header">
+                    <h2 id="validation-title" class="section-title">Validación Estadística</h2>
+                    <p class="section-subtitle">Métodos supervisados, no supervisados e inferencial exacto para corroborar la aleatoriedad de los datos</p>
+                </header>
+                
+                <div class="model-grid" id="validation-container">
+                    <p class="empty-state">Cargando validación estadística…</p>
+                </div>
+            </div>
+        </section>
+        
         <!-- Interactive Visualizer Section -->
         <section id="visualizer" class="section" aria-labelledby="visualizer-title">
             <div class="container">
@@ -533,8 +553,8 @@
                     <h4>Enlaces</h4>
                     <ul>
                         <li><a href="https://www.baloto.com" target="_blank" rel="noopener">Sitio Oficial Baloto</a></li>
-                        <li><a href="https://www.kaggle.com/datasets/jaforero/baloto-colombia" target="_blank" rel="noopener">Dataset Kaggle (2017+)</a></li>
-                        <li><a href="https://www.kaggle.com/datasets/jforero/resultados-baloto" target="_blank" rel="noopener">Dataset Kaggle (2021+)</a></li>
+                        <li><a href="https://www.baloto.com/resultados" target="_blank" rel="noopener">Resultados oficiales (2021+)</a></li>
+                        
                     </ul>
                 </div>
                 <div class="footer-links">
@@ -551,7 +571,8 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>© 2024 Baloto Oracle - Código abierto bajo licencia MIT | Datos de fuentes públicas</p>
+                <p>© 2026 Baloto Oracle - Código abierto bajo licencia MIT | Datos de fuentes públicas</p>
+                <p>Elaborado por Alejandro Quintero, profesor de estadística y programador para la rama caótica de los adeptos virtuales, pertenecientes a la línea de la tecnomancia.</p>
                 <p>Desplegado en GitHub Pages | Actualización automática vía GitHub Actions</p>
             </div>
         </div>
@@ -561,7 +582,7 @@
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
     
     <!-- Scripts -->
-    <script src="src/js/data.js?v=20260809d"></script>
-    <script type="module" src="src/js/main.js?v=20260809d"></script>
+    <script src="src/js/data.js?v=20260827"></script>
+    <script type="module" src="src/js/main.js?v=20260827"></script>
 </body>
 </html>

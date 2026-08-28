@@ -10,17 +10,17 @@ const CONFIG = {
     apiBase: 'data/processed/',
     charts: {
         colors: {
-            primary: '#00d4aa',
-            secondary: '#6366f1',
-            tertiary: '#f59e0b',
+            primary: '#ED1C24',
+            secondary: '#FFE903',
+            tertiary: '#FFB900',
             danger: '#ef4444',
-            warning: '#f97316',
+            warning: '#FF8C00',
             info: '#3b82f6'
         },
         gradients: {
-            primary: ['#00d4aa', '#00b894'],
-            secondary: ['#6366f1', '#818cf8'],
-            warm: ['#f59e0b', '#f97316'],
+            primary: ['#ED1C24', '#E30613'],
+            secondary: ['#FFE903', '#FFC700'],
+            warm: ['#FFB900', '#FF8C00'],
             cool: ['#3b82f6', '#06b6d4']
         }
     },
@@ -79,9 +79,10 @@ const utils = {
     },
     
     formatJackpot: (amount) => {
-        if (amount >= 1e12) return `$${(amount / 1e12).toFixed(1)}B`;
-        if (amount >= 1e9) return `$${(amount / 1e9).toFixed(1)}M`;
-        if (amount >= 1e6) return `$${(amount / 1e6).toFixed(1)}K`;
+        if (amount == null || Number.isNaN(amount)) return '—';
+        if (amount >= 1e12) return `$${(amount / 1e12).toFixed(1)}T`;
+        if (amount >= 1e9) return `$${(amount / 1e9).toFixed(1)}B`;
+        if (amount >= 1e6) return `$${(amount / 1e6).toFixed(1)}M`;
         return utils.formatNumber(amount);
     },
     
@@ -169,6 +170,7 @@ async function loadData() {
             state.data.revancha = window.BAL_DATA.revancha;
             state.data.metadata = window.BAL_DATA.metadata;
             state.data.analysis = window.BAL_DATA.analysis_results || window.BAL_DATA.analysis;
+            state.data.validation = window.BAL_DATA.validation || null;
         } else {
             const [balotoRes, revanchaRes, metadataRes, analysisRes] = await Promise.all([
                 fetch(`${CONFIG.apiBase}baloto.json`),
@@ -181,6 +183,13 @@ async function loadData() {
             state.data.revancha = await revanchaRes.json();
             state.data.metadata = await metadataRes.json();
             state.data.analysis = await analysisRes.json();
+            try {
+                const validationRes = await fetch(`${CONFIG.apiBase}validation_results.json`);
+                if (validationRes.ok) state.data.validation = await validationRes.json();
+                else state.data.validation = null;
+            } catch {
+                state.data.validation = null;
+            }
         }
         
         // Sort by date descending
@@ -343,6 +352,7 @@ function initializeCharts() {
     renderInferentialTests();
     renderInterpretation();
     renderPredictiveModeling();
+    renderValidation();
 }
 
 function getChartColors(count, scheme = 'primary') {
@@ -543,14 +553,14 @@ function createSuperbalotaChart() {
                 label: 'Frecuencia',
                 data: counts,
                 backgroundColor: numbers.map((n, i) => 
-                    i < 3 ? 'rgba(0, 212, 170, 0.8)' : 
+                    i < 3 ? 'rgba(237, 28, 36, 0.8)' : 
                     i > numbers.length - 4 ? 'rgba(239, 68, 68, 0.5)' : 
-                    'rgba(99, 102, 241, 0.6)'
+                    'rgba(255, 233, 3, 0.6)'
                 ),
                 borderColor: numbers.map((n, i) => 
-                    i < 3 ? 'rgba(0, 212, 170, 1)' : 
+                    i < 3 ? 'rgba(237, 28, 36, 1)' : 
                     i > numbers.length - 4 ? 'rgba(239, 68, 68, 1)' : 
-                    'rgba(99, 102, 241, 1)'
+                    'rgba(255, 233, 3, 1)'
                 ),
                 borderWidth: 1,
                 borderRadius: 4
@@ -610,8 +620,8 @@ function createSumChart() {
             datasets: [{
                 label: 'Frecuencia',
                 data: counts,
-                backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                borderColor: 'rgba(99, 102, 241, 1)',
+                backgroundColor: 'rgba(255, 233, 3, 0.6)',
+                borderColor: 'rgba(255, 233, 3, 1)',
                 borderWidth: 1,
                 borderRadius: 2
             }]
@@ -649,8 +659,8 @@ function createOddEvenChart() {
             datasets: [{
                 data,
                 backgroundColor: [
-                    'rgba(0, 212, 170, 0.8)',
-                    'rgba(99, 102, 241, 0.8)',
+                    'rgba(237, 28, 36, 0.8)',
+                    'rgba(255, 233, 3, 0.8)',
                     'rgba(245, 158, 11, 0.8)',
                     'rgba(239, 68, 68, 0.8)',
                     'rgba(168, 85, 247, 0.8)',
@@ -691,8 +701,8 @@ function createHighLowChart() {
             datasets: [{
                 data,
                 backgroundColor: [
-                    'rgba(0, 212, 170, 0.8)',
-                    'rgba(99, 102, 241, 0.8)',
+                    'rgba(237, 28, 36, 0.8)',
+                    'rgba(255, 233, 3, 0.8)',
                     'rgba(245, 158, 11, 0.8)',
                     'rgba(239, 68, 68, 0.8)',
                     'rgba(168, 85, 247, 0.8)',
@@ -792,15 +802,15 @@ function createComparisonChart() {
                 {
                     label: 'Baloto',
                     data: balotoData,
-                    backgroundColor: 'rgba(0, 212, 170, 0.6)',
-                    borderColor: 'rgba(0, 212, 170, 1)',
+                    backgroundColor: 'rgba(237, 28, 36, 0.6)',
+                    borderColor: 'rgba(237, 28, 36, 1)',
                     borderWidth: 1
                 },
                 {
                     label: 'Revancha',
                     data: revanchaData,
-                    backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                    borderColor: 'rgba(99, 102, 241, 1)',
+                    backgroundColor: 'rgba(255, 233, 3, 0.6)',
+                    borderColor: 'rgba(255, 233, 3, 1)',
                     borderWidth: 1
                 }
             ]
@@ -819,8 +829,8 @@ function createProbabilityChart() {
     
     // Highlight top 5
     const top5 = state.data.analysis?.predictions?.next_draw_numbers?.top_5_most_likely || [];
-    const colors = numbers.map(n => top5.includes(n) ? 'rgba(0, 212, 170, 0.8)' : 'rgba(99, 102, 241, 0.4)');
-    const borderColors = numbers.map(n => top5.includes(n) ? 'rgba(0, 212, 170, 1)' : 'rgba(99, 102, 241, 0.6)');
+    const colors = numbers.map(n => top5.includes(n) ? 'rgba(237, 28, 36, 0.8)' : 'rgba(255, 233, 3, 0.4)');
+    const borderColors = numbers.map(n => top5.includes(n) ? 'rgba(237, 28, 36, 1)' : 'rgba(255, 233, 3, 0.6)');
     
     destroyChart('probability');
     state.charts.probability = new Chart(ctx, {
@@ -840,22 +850,23 @@ function createProbabilityChart() {
             ...getBarChartOptions('Distribución de Probabilidades para el Próximo Sorteo', 'Probabilidad (%)'),
             plugins: {
                 ...getBarChartOptions().plugins,
-                ...(Chart.registry?.getPlugin?.('annotation') ? {
+                ...(isAnnotationPluginLoaded() ? {
                     annotation: {
+                        drawTime: 'afterDatasetsDraw',
                         annotations: {
                             expectedLine: {
                                 type: 'line',
                                 mode: 'horizontal',
                                 scale: 'y',
                                 value: 100 / 43,
-                                borderColor: 'rgba(239, 68, 68, 0.5)',
+                                borderColor: 'rgba(239, 68, 68, 1)',
                                 borderWidth: 2,
                                 borderDash: [5, 5],
                                 label: {
                                     enabled: true,
                                     content: 'Probabilidad teórica (2.33%)',
                                     position: 'start',
-                                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                                    backgroundColor: 'rgba(239, 68, 68, 1)',
                                     color: 'white'
                                 }
                             }
@@ -883,8 +894,8 @@ function createHeroChart() {
             datasets: [{
                 label: 'Frecuencia Histórica',
                 data: counts,
-                borderColor: 'rgba(0, 212, 170, 1)',
-                backgroundColor: 'rgba(0, 212, 170, 0.1)',
+                borderColor: 'rgba(237, 28, 36, 1)',
+                backgroundColor: 'rgba(237, 28, 36, 0.1)',
                 fill: true,
                 tension: 0.4,
                 pointRadius: 0,
@@ -1140,39 +1151,54 @@ function populatePredictions() {
     const pred = state.data.analysis?.predictions || {};
     const numbersPred = pred.next_draw_numbers || {};
     const superPred = pred.next_superbalota || {};
-    
+    const hasNumbers = numbersPred.probabilities && Object.keys(numbersPred.probabilities).length > 0;
+    const hasSuper = superPred.probabilities && Object.keys(superPred.probabilities).length > 0;
+
     // Top Numbers
     const topNumbersContainer = document.getElementById('top-numbers-prediction');
-    if (topNumbersContainer && numbersPred.probabilities) {
-        const top10 = Object.entries(numbersPred.probabilities).slice(0, 10);
-        topNumbersContainer.innerHTML = top10.map(([num, prob], idx) => `
-            <div class="prediction-item" style="animation-delay: ${idx * 50}ms">
-                <span class="prediction-rank">${idx + 1}</span>
-                <span class="prediction-number">${num}</span>
-                <span class="prediction-prob">${(prob * 100).toFixed(2)}%</span>
-            </div>
-        `).join('');
+    if (topNumbersContainer) {
+        if (hasNumbers) {
+            const top10 = Object.entries(numbersPred.probabilities).slice(0, 10);
+            topNumbersContainer.innerHTML = top10.map(([num, prob], idx) => `
+                <div class="prediction-item" style="animation-delay: ${idx * 50}ms">
+                    <span class="prediction-rank">${idx + 1}</span>
+                    <span class="prediction-number">${num}</span>
+                    <span class="prediction-prob">${(prob * 100).toFixed(2)}%</span>
+                </div>
+            `).join('');
+        } else {
+            topNumbersContainer.innerHTML = '<p class="empty-state">Sin datos de predicción disponibles.</p>';
+        }
     }
-    
+
     // Superbalota
     const superContainer = document.getElementById('superbalota-prediction');
-    if (superContainer && superPred.probabilities) {
-        const topSuper = Object.entries(superPred.probabilities).slice(0, 5);
-        superContainer.innerHTML = topSuper.map(([num, prob], idx) => `
-            <div class="prediction-item" style="animation-delay: ${idx * 50}ms">
-                <span class="prediction-rank">${idx + 1}</span>
-                <span class="prediction-number">${num}</span>
-                <span class="prediction-prob">${(prob * 100).toFixed(2)}%</span>
-            </div>
-        `).join('');
+    if (superContainer) {
+        if (hasSuper) {
+            const topSuper = Object.entries(superPred.probabilities).slice(0, 5);
+            superContainer.innerHTML = topSuper.map(([num, prob], idx) => `
+                <div class="prediction-item" style="animation-delay: ${idx * 50}ms">
+                    <span class="prediction-rank">${idx + 1}</span>
+                    <span class="prediction-number">${num}</span>
+                    <span class="prediction-prob">${(prob * 100).toFixed(2)}%</span>
+                </div>
+            `).join('');
+        } else {
+            superContainer.innerHTML = '<p class="empty-state">Sin datos de predicción disponibles.</p>';
+        }
     }
-    
+
     // Recommended Combination
     const comboContainer = document.getElementById('recommended-combo');
     if (comboContainer) {
-        const top5 = numbersPred.top_5_most_likely || [11, 38, 40, 8, 3];
-        const topSuper = superPred.most_likely?.[0] || 7;
-        
+        const top5 = numbersPred.top_5_most_likely || [];
+        const topSuper = superPred.most_likely?.[0];
+        if (top5.length === 0 || topSuper === undefined || !hasNumbers) {
+            comboContainer.innerHTML = '<p class="empty-state">Sin combinación recomendada disponible.</p>';
+            return;
+        }
+
+        const jointProb = top5.reduce((acc, n) => acc * (numbersPred.probabilities[n] ?? 0), 1) * 100;
         comboContainer.innerHTML = `
             <div class="combo-numbers">
                 ${top5.map((num, idx) => {
@@ -1190,7 +1216,7 @@ function populatePredictions() {
                 Basado en probabilidades bayesianas | 
                 Números: ${top5.join(', ')} | 
                 Superbalota: ${topSuper} | 
-                Probabilidad conjunta: ~${(top5.reduce((p, n) => p * (numbersPred.probabilities?.[n] || 0.023), 1) * 100).toFixed(4)}%
+                Probabilidad conjunta: ~${jointProb.toFixed(4)}%
             </div>
         `;
     }
@@ -1235,9 +1261,12 @@ function renderPredictiveModeling() {
             ball.style.animationDelay = `${idx * 60}ms`;
             return ball.outerHTML;
         }).join('');
-        const confidence = m.confidence !== undefined
-            ? (m.confidence * 100).toFixed(1) + '%'
-            : (m.confidence_at_05 !== undefined ? (m.confidence_at_05 * 100).toFixed(1) + '%' : '—');
+        const fmtConf = (v) => (typeof v === 'number' && Number.isFinite(v))
+            ? (v * 100).toFixed(1) + '%'
+            : null;
+        const confidence = fmtConf(m.confidence)
+            ?? fmtConf(m.confidence_at_05)
+            ?? (typeof m.confidence === 'string' ? m.confidence : '—');
         return `
             <div class="model-card">
                 <h4>${def.icon} ${def.label}</h4>
@@ -1248,7 +1277,86 @@ function renderPredictiveModeling() {
         `;
     }).filter(Boolean).join('');
     
-    container.innerHTML = `<div class="model-grid">${cardsHtml}</div>`;
+    container.innerHTML = cardsHtml;
+}
+
+function renderValidation() {
+    const container = document.getElementById('validation-container');
+    if (!container) return;
+    const v = state.data.validation;
+    if (!v || !v.blind_test || !v.supervised) {
+        container.innerHTML = '<p class="empty-state">La validación estadística se calculará en el siguiente análisis automático.</p>';
+        return;
+    }
+    const fmtP = (p) => (p === null || p === undefined) ? '—' : (Number(p) < 0.001 ? Number(p).toExponential(2) : Number(p).toFixed(4));
+    const bt = v.blind_test;
+    const sp = v.supervised;
+    const us = v.unsupervised;
+    const ie = v.inferential_exact;
+
+    const cards = [
+        {
+            title: '🎯 Prueba de Pares Ciegos (Walk-Forward)',
+            desc: 'Se entrena solo con sorteos anteriores y se compara la predicción contra el resultado real (150 sorteos de prueba).',
+            items: [
+                ['Bayesiano aciertos top-10/sorteo', `${bt.bayesiano?.mean_hits_top10 ?? '—'} (azar: ${bt.bayesiano?.expected_hits_top10_random ?? '—'})`],
+                ['Markov aciertos top-10/sorteo', `${bt.markov?.mean_hits_top10 ?? '—'} (azar: ${bt.markov?.expected_hits_top10_random ?? '—'})`],
+                ['Binomial bayesiano (p)', fmtP(bt.bayesiano?.binom_pvalue_top10)],
+                ['Binomial markov (p)', fmtP(bt.markov?.binom_pvalue_top10)],
+                ['Monte Carlo z-score', `${bt.monte_carlo_baseline?.bayesiano_vs_mc_zscore ?? '—'} (p=${fmtP(bt.monte_carlo_baseline?.bayesiano_vs_mc_pvalue)})`]
+            ],
+            conclusion: bt.conclusion
+        },
+        {
+            title: '🤖 Supervisado (Random Forest + Regresión Logística)',
+            desc: 'Clasificadores por número (1..43) entrenados en walk-forward; AUC vs 0.5 y lift vs 5/43.',
+            items: [
+                ['RF AUC medio', `${sp.random_forest?.mean_auc ?? '—'} (H0: 0.5)`],
+                ['LR AUC medio', `${sp.logistic_regression?.mean_auc ?? '—'} (H0: 0.5)`],
+                ['RF lift top-5', `${sp.random_forest?.lift_vs_random ?? '—'} (azar: 1.0)`],
+                ['LR lift top-5', `${sp.logistic_regression?.lift_vs_random ?? '—'} (azar: 1.0)`],
+                ['Aparición esperada por número', `${(sp.baseline_appearance_rate * 100).toFixed(2)}%`]
+            ],
+            conclusion: sp.conclusion
+        },
+        {
+            title: '🔍 No Supervisado (PCA + K-Means)',
+            desc: 'Se busca estructura latente en las características de los sorteos.',
+            items: [
+                ['Varianza PC1', `${us.pca?.explained_variance_ratio?.[0] ?? '—'}`],
+                ['Varianza acumulada 4 componentes', `${us.pca?.cumulative_variance?.slice(-1)[0] ?? '—'}`],
+                ['Silhouette k=2..6', `${Object.values(us.kmeans?.silhouette_by_k ?? {}).map(x => x.toFixed(3)).join(', ')}`]
+            ],
+            conclusion: us.conclusion || 'Sin estructura latente significativa.'
+        },
+        {
+            title: '📐 Inferencial Exacto',
+            desc: 'Tests de aleatoriedad, uniformidad e independencia.',
+            items: [
+                ['Cramér-von Mises (p)', fmtP(ie?.cramer_von_mises?.pvalue)],
+                ['Runs paridad (z, p)', `${ie?.runs_wald_wolfowitz?.parity?.z ?? '—'}, ${fmtP(ie?.runs_wald_wolfowitz?.parity?.pvalue)}`],
+                ['Runs alto/bajo (z, p)', `${ie?.runs_wald_wolfowitz?.high_low?.z ?? '—'}, ${fmtP(ie?.runs_wald_wolfowitz?.high_low?.pvalue)}`],
+                ['ANOVA posiciones (F, p)', `${ie?.anova_positions?.f_statistic ?? '—'}, ${fmtP(ie?.anova_positions?.pvalue)}`],
+                ['Fisher par 32-33 (OR, p)', `${ie?.fisher_exact_top_pair?.odds_ratio ?? '—'}, ${fmtP(ie?.fisher_exact_top_pair?.pvalue)}`],
+                ['Gaps Poisson-geométrico (p)', fmtP(ie?.poisson_gaps?.mean_dispersion_pvalue)],
+                ['Entropía de Shannon (ratio)', ie?.shannon_entropy?.ratio ?? '—']
+            ],
+            conclusion: ie?.conclusion
+        }
+    ];
+
+    const cardsHtml = cards.filter(c => c.items.length).map(c => `
+        <div class="model-card">
+            <h4>${c.title}</h4>
+            <p class="combo-info">${c.desc}</p>
+            <div class="detail-item"><span class="detail-label">Resultados</span><span class="detail-value">${c.items.map(([l, val]) => `<div>${l}: <strong>${val}</strong></div>`).join('')}</span></div>
+            ${c.conclusion ? `<div class="detail-item"><span class="detail-label">Conclusión</span><span class="detail-value">${c.conclusion}</span></div>` : ''}
+        </div>
+    `).join('');
+
+    container.innerHTML = cardsHtml + `
+        <p class="combo-info" style="margin-top: 1rem;">⚠️ La validación confirma que los sorteos son uniformes e independientes: ninguna técnica predictiva supera el azar de forma significativa. Las predicciones son solo informativas.</p>
+    `;
 }
 // ==========================================================================
 // Latest Draws Table
@@ -1561,7 +1669,7 @@ function renderJackpotViz(svg, data, width, height, margin) {
     
     svg.append('path')
         .datum(sortedData)
-        .attr('fill', 'rgba(0, 212, 170, 0.1)')
+        .attr('fill', 'rgba(237, 28, 36, 0.1)')
         .attr('stroke', 'none')
         .attr('d', area);
     
@@ -1691,7 +1799,7 @@ function initializeParticles() {
                 vx: (Math.random() - 0.5) * 0.5,
                 vy: (Math.random() - 0.5) * 0.5,
                 radius: Math.random() * 2 + 0.5,
-                color: Math.random() > 0.5 ? 'rgba(0, 212, 170,' : 'rgba(99, 102, 241,',
+                color: Math.random() > 0.5 ? 'rgba(237, 28, 36,' : 'rgba(255, 233, 3,',
                 opacity: Math.random() * 0.5 + 0.1
             });
         }
@@ -1726,7 +1834,7 @@ function initializeParticles() {
                     ctx.beginPath();
                     ctx.moveTo(particles[i].x, particles[i].y);
                     ctx.lineTo(particles[j].x, particles[j].y);
-                    ctx.strokeStyle = `rgba(0, 212, 170, ${0.1 * (1 - dist / 150)})`;
+                    ctx.strokeStyle = `rgba(237, 28, 36, ${0.1 * (1 - dist / 150)})`;
                     ctx.lineWidth = 0.5;
                     ctx.stroke();
                 }
@@ -1827,6 +1935,19 @@ function initializeFocusVisible() {
     }
 }
 
+// Comprobación segura: Chart.js v4 lanza en Chart.registry.getPlugin()
+// cuando el plugin NO está registrado, por lo que solo se consultan los plugins
+// ya registrados en Chart.registry.plugins.items.
+function isAnnotationPluginLoaded() {
+    if (typeof Chart === 'undefined') return false;
+    try {
+        const items = Chart.registry?.plugins?.items ?? {};
+        return Object.values(items).some(p => p && p.id === 'annotation');
+    } catch (err) {
+        return false;
+    }
+}
+
 // ==========================================================================
 // Initialization
 // ==========================================================================
@@ -1851,19 +1972,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Add Chart.js annotation plugin if not loaded
-    if (typeof Chart !== 'undefined' && !Chart.registry.getPlugin('annotation')) {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js';
-        script.onload = () => {
-            // Recrea el chart de probabilidades para que muestre la anotación (línea teórica)
-            const probs = state.data?.analysis?.predictions?.next_draw_numbers?.probabilities;
-            if (probs && Object.keys(probs).length) createProbabilityChart();
-            Object.values(state.charts).forEach(chart => {
-                if (chart && chart.update) chart.update();
-            });
-        };
-        document.head.appendChild(script);
+    // chartjs-plugin-annotation se carga estáticamente en index.html ANTES de crear charts:
+    // los charts deben nacer con el plugin registrado, o su estado (chartStates/beforeInit)
+    // nunca se inicializa y cualquier redraw crashea en beforeDraw con
+    // "Cannot read properties of undefined (reading 'visibleElements')".
+    // Fallback defensivo (si el script estático no cargó): registrar si el global existe.
+    if (typeof ChartAnnotation !== 'undefined' && !isAnnotationPluginLoaded()) {
+        Chart.register(ChartAnnotation);
     }
 });
 
