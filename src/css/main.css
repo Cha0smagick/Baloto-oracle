@@ -681,6 +681,50 @@ pre {
     color: var(--text-primary);
 }
 
+/* Validation metric rows */
+.metric-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.metric-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.metric-label {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+.metric-value {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--accent-primary);
+    text-align: right;
+}
+
+.card-conclusion {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-tertiary);
+    border-left: 3px solid var(--accent-secondary);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
 /* ==========================================================================
    Interpretation
    ========================================================================== */

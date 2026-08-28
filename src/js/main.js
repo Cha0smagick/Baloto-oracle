@@ -1349,8 +1349,15 @@ function renderValidation() {
         <div class="model-card">
             <h4>${c.title}</h4>
             <p class="combo-info">${c.desc}</p>
-            <div class="detail-item"><span class="detail-label">Resultados</span><span class="detail-value">${c.items.map(([l, val]) => `<div>${l}: <strong>${val}</strong></div>`).join('')}</span></div>
-            ${c.conclusion ? `<div class="detail-item"><span class="detail-label">Conclusión</span><span class="detail-value">${c.conclusion}</span></div>` : ''}
+            <div class="metric-list">
+                ${c.items.map(([l, val]) => `
+                    <div class="metric-row">
+                        <span class="metric-label">${l}</span>
+                        <span class="metric-value">${val}</span>
+                    </div>
+                `).join('')}
+            </div>
+            ${c.conclusion ? `<div class="card-conclusion">${c.conclusion}</div>` : ''}
         </div>
     `).join('');
 
