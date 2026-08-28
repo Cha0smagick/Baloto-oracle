@@ -353,6 +353,7 @@ function initializeCharts() {
     renderInterpretation();
     renderPredictiveModeling();
     renderValidation();
+    renderPredictionDashboard();
 }
 
 function getChartColors(count, scheme = 'primary') {
@@ -1293,6 +1294,7 @@ function renderValidation() {
     const sp = v.supervised;
     const us = v.unsupervised;
     const ie = v.inferential_exact;
+    const analysis = state.data.analysis;
 
     const cards = [
         {
@@ -1360,6 +1362,85 @@ function renderValidation() {
             ${c.conclusion ? `<div class="card-conclusion">${c.conclusion}</div>` : ''}
         </div>
     `).join('');
+
+    function renderPredictionDashboard() {
+    const container = document.getElementById('prediction-dashboard-container');
+    if (!container) return;
+    const v = state.data.validation;
+    const analysis = state.data.analysis;
+    if (!v || !analysis) {
+        container.innerHTML = '<p class="empty-state">El tablero de predicciones se calculará en el siguiente análisis automático.</p>';
+        return;
+    }
+    const interpColor = (prob, minP, maxP) => {
+        const ratio = (prob - minP) / ((maxP - minP) || 1);
+        const c1 = ratio < 0.5 ? [239, 68, 68] : [245, 158, 11];
+        const c2 = ratio < 0.5 ? [245, 158, 11] : [34, 197, 94];
+        const t = ratio < 0.5 ? ratio * 2 : (ratio - 0.5) * 2;
+        const r = Math.round(c1[0] + (c2[0] - c1[0]) * t);
+        const g = Math.round(c1[1] + (c2[1] - c1[1]) * t);
+        const b = Math.round(c1[2] + (c2[2] - c1[2]) * t);
+        return 'rgb(' + r + ',' + g + ',' + b + ')';
+    };
+
+    const preds = analysis && analysis.predictions ? analysis.predictions : null;
+    const ndn = preds && preds.next_draw_numbers ? preds.next_draw_numbers : null;
+    const drawProbs = ndn && ndn.probabilities ? ndn.probabilities : {};
+    const top10 = ndn && ndn.top_10_most_likely ? ndn.top_10_most_likely : [];
+    const probs = top10.map((n) => drawProbs[n] || 0);
+    const minP = probs.length ? Math.min.apply(null, probs) : 0;
+    const maxP = probs.length ? Math.max.apply(null, probs) : 1;
+
+    const ballRows = top10.map((n) => {
+        const p = drawProbs[n] || 0;
+        const col = interpColor(p, minP, maxP);
+        return '<div class="pred-ball-row">' + utils.createBall(n, 36).outerHTML +
+            '<span class="pred-ball-pct" style="color:' + col + '">' + (p * 100).toFixed(2) + '%</span></div>';
+    }).join('');
+
+    const sbs = preds && preds.next_superbalota ? preds.next_superbalota : null;
+    const sbLikely = sbs && sbs.most_likely ? sbs.most_likely.slice(0, 3) : [];
+    const sbProbs = sbs && sbs.probabilities ? sbs.probabilities : {};
+    const sbRows = sbLikely.map((n) => {
+        const p = sbProbs[n] || 0;
+        return '<div class="pred-ball-row">' + utils.createBall(n, 32, true).outerHTML +
+            '<span class="pred-ball-pct" style="color:var(--accent-secondary)">' + (p * 100).toFixed(2) + '%</span></div>';
+    }).join('');
+
+    const ie2 = v.inferential_exact || {};
+    const tests = [];
+    const addTest = (label, pval, note) => {
+        const p = Number(pval);
+        const pass = !isNaN(p) && p >= 0.05;
+        tests.push('<div class="metric-row"><span class="metric-label">' + label + '</span>' +
+            '<span class="metric-value"><span class="test-badge ' + (pass ? 'pass' : 'fail') + '">' +
+            (pass ? 'PASADA' : 'NO PASADA') + '</span>' +
+            (note ? ' <em class="test-note">' + note + '</em>' : '') + '</span></div>');
+    };
+    addTest('Kolmogorov-Smirnov', ie2.kolmogorov_smirnov_uniformity && ie2.kolmogorov_smirnov_uniformity.pvalue);
+    addTest('Cramér-von Mises', ie2.cramer_von_mises && ie2.cramer_von_mises.pvalue);
+    addTest('Runs paridad', ie2.runs_wald_wolfowitz && ie2.runs_wald_wolfowitz.parity && ie2.runs_wald_wolfowitz.parity.pvalue);
+    addTest('Runs alto/bajo', ie2.runs_wald_wolfowitz && ie2.runs_wald_wolfowitz.high_low && ie2.runs_wald_wolfowitz.high_low.pvalue);
+    addTest('Ljung-Box (lag 1)', ie2.ljung_box_sum_series && ie2.ljung_box_sum_series.lag1 && ie2.ljung_box_sum_series.lag1.pvalue);
+    addTest('ANOVA posiciones', ie2.anova_positions && ie2.anova_positions.pvalue, 'esperada (muestreo sin reemplazo)');
+    addTest('Fisher par 32-33', ie2.fisher_exact_top_pair && ie2.fisher_exact_top_pair.pvalue);
+    addTest('Poisson-geométrico', ie2.poisson_gaps && ie2.poisson_gaps.mean_dispersion_pvalue);
+    addTest('Pares ciegos bayesiano', v.blind_test && v.blind_test.bayesiano && v.blind_test.bayesiano.binom_pvalue_top10);
+    addTest('Pares ciegos markov', v.blind_test && v.blind_test.markov && v.blind_test.markov.binom_pvalue_top10);
+    const mc = v.blind_test && v.blind_test.monte_carlo_baseline;
+    addTest('Monte Carlo vs azar', mc && mc.bayesiano_vs_mc_pvalue, 'modelos bajo el azar');
+    const passCount = tests.filter((t) => t.indexOf('pass') > -1).length;
+    const totalTests = tests.length;
+
+    const dashboardHtml = '<div class="model-card"><h4>🎱 Tablero de Predicciones y Certeza</h4>' +
+        '<p class="combo-info">Predicciones para el próximo sorteo: el porcentaje es la probabilidad estimada (rojo = menor, verde = mayor).</p>' +
+        '<div class="metric-list">' + ballRows + '</div>' +
+        (sbRows ? '<p class="combo-info" style="margin-top:0.75rem;">Superbalota:</p><div class="metric-list">' + sbRows + '</div>' : '') +
+        '<div class="tests-summary"><span class="tests-header">Resumen de pruebas (' + passCount + '/' + totalTests + ' pasadas)</span>' + tests.join('') + '</div>' +
+        '<div class="card-conclusion">Las pruebas confirman sorteos uniformes e independientes: las predicciones no superan el azar y son solo informativas.</div></div>';
+
+    container.innerHTML = dashboardHtml;
+}
 
     container.innerHTML = cardsHtml + `
         <p class="combo-info" style="margin-top: 1rem;">⚠️ La validación confirma que los sorteos son uniformes e independientes: ninguna técnica predictiva supera el azar de forma significativa. Las predicciones son solo informativas.</p>

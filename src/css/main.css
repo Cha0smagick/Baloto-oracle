@@ -725,6 +725,62 @@ pre {
     color: var(--text-secondary);
 }
 
+/* Prediction dashboard rows */
+.pred-ball-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+}
+
+.pred-ball-pct {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+
+/* Validation test badges */
+.test-badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.test-badge.pass {
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ADE80;
+}
+
+.test-badge.fail {
+    background: rgba(248, 113, 113, 0.15);
+    color: #F87171;
+}
+
+.test-note {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.75rem;
+}
+
+.tests-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.tests-header {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
 /* ==========================================================================
    Interpretation
    ========================================================================== */
