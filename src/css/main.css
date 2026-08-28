@@ -681,6 +681,11 @@ pre {
     color: var(--text-primary);
 }
 
+/* Prediction dashboard - full width card */
+#prediction-dashboard-container {
+    display: block;
+}
+
 /* Validation metric rows */
 .metric-list {
     display: flex;
