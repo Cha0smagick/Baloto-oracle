@@ -43,8 +43,8 @@ N_BALLS = 43
 N_SUPER = 16
 DRAWS_PER_GAME = 5
 RANDOM_SEED = 42
-TEST_WINDOW = 150          # últimos N sorteos como ventana de prueba (pares ciegos)
-LOOKBACK = 50              # recencia para el modelo bayesiano
+TEST_WINDOW = 150  # últimos N sorteos como ventana de prueba (pares ciegos)
+LOOKBACK = 50  # recencia para el modelo bayesiano
 MONTE_CARLO_SIMS = 2000
 
 
@@ -145,8 +145,13 @@ def blind_test_walk_forward(draws):
 
         # Test binomial exacto: H0: p = 10/43 (top-10) o 5/43 (top-5)
         from scipy.stats import binomtest
-        pv5 = binomtest(total_hits5, trials, DRAWS_PER_GAME / N_BALLS, alternative="greater").pvalue
-        pv10 = binomtest(total_hits10, trials, 10 / N_BALLS, alternative="greater").pvalue
+
+        pv5 = binomtest(
+            total_hits5, trials, DRAWS_PER_GAME / N_BALLS, alternative="greater"
+        ).pvalue
+        pv10 = binomtest(
+            total_hits10, trials, 10 / N_BALLS, alternative="greater"
+        ).pvalue
 
         results[name] = {
             "test_draws": len(test_draws),
@@ -166,14 +171,21 @@ def blind_test_walk_forward(draws):
     for _ in range(MONTE_CARLO_SIMS):
         s = 0
         for i, top in enumerate(top10s):
-            rand5 = set(rng.choice(np.arange(1, N_BALLS + 1), size=5, replace=False).tolist())
+            rand5 = set(
+                rng.choice(np.arange(1, N_BALLS + 1), size=5, replace=False).tolist()
+            )
             s += len(rand5 & top)
         mc_hits.append(s / len(test_draws))
     mc_mean = float(np.mean(mc_hits))
     mc_std = float(np.std(mc_hits))
     bayes_mean = results["bayesiano"]["mean_hits_top10"]
-    z = (bayes_mean - mc_mean) / (mc_std / math.sqrt(len(test_draws))) if mc_std > 0 else 0.0
+    z = (
+        (bayes_mean - mc_mean) / (mc_std / math.sqrt(len(test_draws)))
+        if mc_std > 0
+        else 0.0
+    )
     from scipy.stats import norm
+
     z_pvalue = float(2 * (1 - norm.cdf(abs(z))))  # dos colas
 
     results["monte_carlo_baseline"] = {
@@ -184,13 +196,17 @@ def blind_test_walk_forward(draws):
         "bayesiano_vs_mc_pvalue": _p_label(z_pvalue),
     }
 
-    exceeds = any(r["exceeds_chance_top10"] for k, r in results.items() if isinstance(r, dict) and "exceeds_chance_top10" in r)
+    exceeds = any(
+        r["exceeds_chance_top10"]
+        for k, r in results.items()
+        if isinstance(r, dict) and "exceeds_chance_top10" in r
+    )
     results["conclusion"] = (
         "Los modelos NO superan significativamente el azar (p >= 0.05): "
         "no se detecta poder predictivo en los sorteos, consistente con "
         "eventos aleatorios independientes."
-        if not exceeds else
-        "ALERTA: algún modelo supera el azar al 5%. Revisar posible leakage o anomalía de datos."
+        if not exceeds
+        else "ALERTA: algún modelo supera el azar al 5%. Revisar posible leakage o anomalía de datos."
     )
     return results
 
@@ -258,7 +274,9 @@ def supervised_validation(draws):
         # Lift: aciertos de los 5 números más probables (promedio global por sorteo).
         # Reutiliza los 43 modelos ya entrenados (sin re-fit por fila → evita O(43×rows) fits).
         top5_hits = 0
-        proba_te = np.column_stack([m.predict_proba(X_te)[:, 1] for m in fitted])  # (n_test, 43)
+        proba_te = np.column_stack(
+            [m.predict_proba(X_te)[:, 1] for m in fitted]
+        )  # (n_test, 43)
         for row_idx in range(len(X_te)):
             scores = proba_te[row_idx]
             top5 = set(np.argsort(scores)[-5:].tolist())
@@ -270,17 +288,32 @@ def supervised_validation(draws):
             "numbers_with_valid_auc": len(aucs),
             "mean_hits_top5": round(mean_lift, 4),
             "expected_hits_top5_random": round(DRAWS_PER_GAME * 5 / N_BALLS, 4),
-            "lift_vs_random": round(mean_lift / (DRAWS_PER_GAME * 5 / N_BALLS), 3) if (DRAWS_PER_GAME * 5 / N_BALLS) > 0 else None,
+            "lift_vs_random": (
+                round(mean_lift / (DRAWS_PER_GAME * 5 / N_BALLS), 3)
+                if (DRAWS_PER_GAME * 5 / N_BALLS) > 0
+                else None
+            ),
         }
 
     results = {
-        "random_forest": evaluate("rf", lambda: RandomForestClassifier(n_estimators=100, random_state=RANDOM_SEED, class_weight="balanced")),
-        "logistic_regression": evaluate("lr", lambda: LogisticRegression(max_iter=2000, class_weight="balanced")),
+        "random_forest": evaluate(
+            "rf",
+            lambda: RandomForestClassifier(
+                n_estimators=100, random_state=RANDOM_SEED, class_weight="balanced"
+            ),
+        ),
+        "logistic_regression": evaluate(
+            "lr", lambda: LogisticRegression(max_iter=2000, class_weight="balanced")
+        ),
         "train_draws": start - 1,
         "test_draws": len(range(start - 1, n - 1)),
         "baseline_appearance_rate": round(DRAWS_PER_GAME / N_BALLS, 4),
     }
-    both = [v["mean_auc"] for v in results.values() if isinstance(v, dict) and v.get("mean_auc") is not None]
+    both = [
+        v["mean_auc"]
+        for v in results.values()
+        if isinstance(v, dict) and v.get("mean_auc") is not None
+    ]
     results["conclusion"] = (
         "AUC medio ~0.5 y lift ~1.0: los clasificadores no encuentran patrón "
         "aprovechable más allá del azar."
@@ -340,10 +373,13 @@ def unsupervised_validation(draws):
                 continue
             try:
                 from scipy.stats import chi2_contingency
+
                 chi2, pv, _, _ = chi2_contingency(table)
                 obs = both / n
                 exp = (cooc[a].sum() / n) * (cooc[b].sum() / n)
-                pairs.append((a + 1, b + 1, round(obs, 4), round(exp, 4), round(chi2, 3), pv))
+                pairs.append(
+                    (a + 1, b + 1, round(obs, 4), round(exp, 4), round(chi2, 3), pv)
+                )
             except Exception:
                 continue
     # FDR Benjamini-Hochberg sobre los p-values
@@ -355,9 +391,17 @@ def unsupervised_validation(draws):
         thresh = np.array([0.05 * (i + 1) / m for i in range(m)])
         sig = ranked <= thresh
         keep = set(order[sig].tolist()) if sig.any() else set()
-        pairs_sorted = sorted(pairs, key=lambda x: x[2] / x[3] if x[3] > 0 else 999, reverse=True)
-        top_pairs = [{"pair": f"{a}-{b}", "observed": o, "expected": e, "chi2": c, "pvalue": _p_label(p), "fdr_significant": idx in keep}
-                     for idx, (a, b, o, e, c, p) in enumerate(pairs)]
+        top_pairs = [
+            {
+                "pair": f"{a}-{b}",
+                "observed": o,
+                "expected": e,
+                "chi2": c,
+                "pvalue": _p_label(p),
+                "fdr_significant": idx in keep,
+            }
+            for idx, (a, b, o, e, c, p) in enumerate(pairs)
+        ]
         top_pairs = top_pairs[:5]
     else:
         top_pairs = []
@@ -383,7 +427,11 @@ def unsupervised_validation(draws):
     results["conclusion"] = (
         "Sin estructura latente detectable: PCA sin componente dominante, "
         "silhouette ≈ 0 y pares sin asociación significativa."
-        if (mean_sil is not None and abs(mean_sil) < 0.15 and not any(p["fdr_significant"] for p in top_pairs))
+        if (
+            mean_sil is not None
+            and abs(mean_sil) < 0.15
+            and not any(p["fdr_significant"] for p in top_pairs)
+        )
         else "Posible estructura débil: revisar PCA/KMeans/correlaciones en detalle."
     )
     return results
@@ -394,7 +442,7 @@ def unsupervised_validation(draws):
 # ---------------------------------------------------------------------------
 def inferential_exact(draws):
     """Tests exactos y de aleatoriedad adicionales a analyze_baloto.py."""
-    from scipy.stats import cramervonmises, f_oneway, fisher_exact, kstest, poisson
+    from scipy.stats import cramervonmises, f_oneway, fisher_exact, kstest
     from statsmodels.stats.diagnostic import acorr_ljungbox
 
     n = len(draws)
@@ -405,18 +453,28 @@ def inferential_exact(draws):
 
     # 4.1 Kolmogorov-Smirnov (uniformidad global)
     ks_stat, ks_p = kstest(transformed, "uniform")
-    out["kolmogorov_smirnov_uniformity"] = {"statistic": round(float(ks_stat), 4), "pvalue": _p_label(ks_p)}
+    out["kolmogorov_smirnov_uniformity"] = {
+        "statistic": round(float(ks_stat), 4),
+        "pvalue": _p_label(ks_p),
+    }
 
     # 4.2 Cramér-von Mises (uniformidad)
     try:
         cvm = cramervonmises(transformed, "uniform")
-        out["cramer_von_mises"] = {"statistic": round(float(cvm.statistic), 4), "pvalue": _p_label(cvm.pvalue)}
+        out["cramer_von_mises"] = {
+            "statistic": round(float(cvm.statistic), 4),
+            "pvalue": _p_label(cvm.pvalue),
+        }
     except Exception:
         out["cramer_von_mises"] = None
 
     # 4.3 Runs test de Wald-Wolfowitz (par/impar y alto/bajo)
-    parity = np.array([1 if sum(1 for x in d["numbers"] if x % 2 == 1) >= 3 else 0 for d in draws])
-    high = np.array([1 if sum(1 for x in d["numbers"] if x > 22) >= 3 else 0 for d in draws])
+    parity = np.array(
+        [1 if sum(1 for x in d["numbers"] if x % 2 == 1) >= 3 else 0 for d in draws]
+    )
+    high = np.array(
+        [1 if sum(1 for x in d["numbers"] if x > 22) >= 3 else 0 for d in draws]
+    )
 
     def runs_test(seq):
         runs = 1
@@ -433,6 +491,7 @@ def inferential_exact(draws):
             return None, None
         z = (runs - mu) / math.sqrt(var)
         from scipy.stats import norm
+
         return round(float(z), 3), _p_label(float(2 * (1 - norm.cdf(abs(z)))))
 
     z_par, p_par = runs_test(parity)
@@ -447,12 +506,17 @@ def inferential_exact(draws):
     sums = np.array([sum(d["numbers"]) for d in draws], dtype=float)
     lb = acorr_ljungbox(sums, lags=[1, 5, 10, 20], return_df=True)
     out["ljung_box_sum_series"] = {
-        f"lag{lag}": {"stat": round(float(lb.loc[lag, "lb_stat"]), 3), "pvalue": _p_label(float(lb.loc[lag, "lb_pvalue"]))}
+        f"lag{lag}": {
+            "stat": round(float(lb.loc[lag, "lb_stat"]), 3),
+            "pvalue": _p_label(float(lb.loc[lag, "lb_pvalue"])),
+        }
         for lag in [1, 5, 10, 20]
     }
 
     # 4.5 ANOVA de una vía (medias por posición 1..5)
-    positions = [np.array([d["numbers"][i] for d in draws], dtype=float) for i in range(5)]
+    positions = [
+        np.array([d["numbers"][i] for d in draws], dtype=float) for i in range(5)
+    ]
     f_stat, f_p = f_oneway(*positions)
     out["anova_positions"] = {
         "f_statistic": round(float(f_stat), 3),
@@ -477,8 +541,10 @@ def inferential_exact(draws):
     table = np.array([[both, only_a], [only_b, neither]])
     odds, fisher_p = fisher_exact(table, alternative="two-sided")
     out["fisher_exact_top_pair"] = {
-        "pair": f"{a}-{b}", "cooccurrences": int(both),
-        "odds_ratio": round(float(odds), 3), "pvalue": _p_label(fisher_p),
+        "pair": f"{a}-{b}",
+        "cooccurrences": int(both),
+        "odds_ratio": round(float(odds), 3),
+        "pvalue": _p_label(fisher_p),
     }
 
     # 4.7 Poisson — dispersión de gaps entre apariciones de cada número
@@ -504,15 +570,18 @@ def inferential_exact(draws):
         # no Poisson: E[gap]=1/p, Var[gap]=(1-p)/p² con p=5/43. Comparamos la varianza
         # empírica contra la varianza geométrica teórica: ratio≈1 ⇒ independencia.
         from scipy.stats import chi2
+
         df = len(g) - 1
         p_geom = DRAWS_PER_GAME / N_BALLS
-        geom_var = (1 - p_geom) / (p_geom ** 2) if p_geom > 0 else float("nan")
+        geom_var = (1 - p_geom) / (p_geom**2) if p_geom > 0 else float("nan")
         d = df * var / geom_var if geom_var > 0 else float("nan")
         disp_pvals.append(1 - chi2.cdf(d, df))
     out["poisson_gaps"] = {
         "mean_gap_mean": round(float(np.mean(gap_means)), 2),
         "mean_gap_variance": round(float(np.mean(gap_vars)), 2),
-        "theoretical_geometric_variance": round(float((1 - DRAWS_PER_GAME / N_BALLS) / ((DRAWS_PER_GAME / N_BALLS) ** 2)), 2),
+        "theoretical_geometric_variance": round(
+            float((1 - DRAWS_PER_GAME / N_BALLS) / ((DRAWS_PER_GAME / N_BALLS) ** 2)), 2
+        ),
         "mean_dispersion_pvalue": _p_label(float(np.mean(disp_pvals))),
         "note": "Si varianza ≈ varianza geométrica teórica (1-p)/p² y p alto, los gaps siguen la distribución geométrica esperada para apariciones independientes (Bernoulli por sorteo).",
     }
@@ -542,8 +611,10 @@ def inferential_exact(draws):
 # ---------------------------------------------------------------------------
 def run_validation():
     draws = load_draws()
-    print(f"Cargados {len(draws)} sorteos Baloto reales "
-          f"({draws[0]['date']} -> {draws[-1]['date']})")
+    print(
+        f"Cargados {len(draws)} sorteos Baloto reales "
+        f"({draws[0]['date']} -> {draws[-1]['date']})"
+    )
 
     print("\n[1/4] Prueba de pares ciegos (walk-forward)...")
     blind = blind_test_walk_forward(draws)
@@ -559,8 +630,11 @@ def run_validation():
 
     results = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "data": {"source": "https://www.baloto.com/resultados (sitio oficial, scraping paginado)",
-                 "draws": len(draws), "range": f"{draws[0]['date']} -> {draws[-1]['date']}"},
+        "data": {
+            "source": "https://www.baloto.com/resultados (sitio oficial, scraping paginado)",
+            "draws": len(draws),
+            "range": f"{draws[0]['date']} -> {draws[-1]['date']}",
+        },
         "methodology": {
             "blind_test": "Walk-forward out-of-sample: entrenar solo con sorteos anteriores y comparar top-10/top-5 contra el resultado real; contraste con Monte Carlo y test binomial exacto.",
             "supervised": "Random Forest y Regresión Logística por número (1..43) con split walk-forward; AUC vs 0.5 y lift vs 5/43.",
@@ -582,31 +656,43 @@ def run_validation():
     print("RESUMEN DE VALIDACIÓN (datos reales)")
     print("=" * 62)
     bt = results["blind_test"]
-    print(f"\n— Pares ciegos (top-10, {bt['bayesiano']['test_draws']} sorteos de prueba):")
+    print(
+        f"\n— Pares ciegos (top-10, {bt['bayesiano']['test_draws']} sorteos de prueba):"
+    )
     for k in ("bayesiano", "markov"):
         r = bt[k]
-        print(f"  {k:10s} aciertos/sorteo={r['mean_hits_top10']:.3f} (azar={r['expected_hits_top10_random']:.3f}) "
-              f"binomial p={r['binom_pvalue_top10']}")
+        print(
+            f"  {k:10s} aciertos/sorteo={r['mean_hits_top10']:.3f} (azar={r['expected_hits_top10_random']:.3f}) "
+            f"binomial p={r['binom_pvalue_top10']}"
+        )
     mc = bt["monte_carlo_baseline"]
-    print(f"  MonteCarlo   aciertos/sorteo={mc['mean_hits_top10']:.3f} ± {mc['std_hits_top10']:.3f} "
-          f"(z={mc['bayesiano_vs_mc_zscore']}, p={mc['bayesiano_vs_mc_pvalue']})")
+    print(
+        f"  MonteCarlo   aciertos/sorteo={mc['mean_hits_top10']:.3f} ± {mc['std_hits_top10']:.3f} "
+        f"(z={mc['bayesiano_vs_mc_zscore']}, p={mc['bayesiano_vs_mc_pvalue']})"
+    )
     print(f"  -> {bt['conclusion']}")
 
     sp = results["supervised"]
-    print(f"\n— Supervisado: RF AUC={sp['random_forest']['mean_auc']}, LR AUC={sp['logistic_regression']['mean_auc']} "
-          f"(H0=0.5); RF top-5 lift={sp['random_forest']['lift_vs_random']}")
+    print(
+        f"\n— Supervisado: RF AUC={sp['random_forest']['mean_auc']}, LR AUC={sp['logistic_regression']['mean_auc']} "
+        f"(H0=0.5); RF top-5 lift={sp['random_forest']['lift_vs_random']}"
+    )
     print(f"  -> {sp['conclusion']}")
 
     us = results["unsupervised"]
-    print(f"\n— No supervisado: PCA varianza PC1={us['pca']['explained_variance_ratio'][0]}, "
-          f"silhouette k=2..6={list(us['kmeans']['silhouette_by_k'].values())}")
+    print(
+        f"\n— No supervisado: PCA varianza PC1={us['pca']['explained_variance_ratio'][0]}, "
+        f"silhouette k=2..6={list(us['kmeans']['silhouette_by_k'].values())}"
+    )
     print(f"  -> {us['conclusion']}")
 
     ie = results["inferential_exact"]
-    print(f"\n— Inferencial exacto: KS p={ie['kolmogorov_smirnov_uniformity']['pvalue']}, "
-          f"CvM p={ie['cramer_von_mises']['pvalue'] if ie['cramer_von_mises'] else 'n/a'}, "
-          f"ANOVA p={ie['anova_positions']['pvalue']}, "
-          f"entropía={ie['shannon_entropy']['ratio']}")
+    print(
+        f"\n— Inferencial exacto: KS p={ie['kolmogorov_smirnov_uniformity']['pvalue']}, "
+        f"CvM p={ie['cramer_von_mises']['pvalue'] if ie['cramer_von_mises'] else 'n/a'}, "
+        f"ANOVA p={ie['anova_positions']['pvalue']}, "
+        f"entropía={ie['shannon_entropy']['ratio']}"
+    )
     print(f"  -> {ie['conclusion']}")
     print("\n" + "=" * 62)
 

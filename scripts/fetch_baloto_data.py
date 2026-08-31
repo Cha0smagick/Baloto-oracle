@@ -57,12 +57,23 @@ HEADERS = {
 }
 
 SPANISH_MONTHS = {
-    "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6,
-    "Julio": 7, "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11,
+    "Enero": 1,
+    "Febrero": 2,
+    "Marzo": 3,
+    "Abril": 4,
+    "Mayo": 5,
+    "Junio": 6,
+    "Julio": 7,
+    "Agosto": 8,
+    "Septiembre": 9,
+    "Octubre": 10,
+    "Noviembre": 11,
     "Diciembre": 12,
 }
 
-JACKPOT_RE = re.compile(r"ACUMULADO\s+DEL\s+SORTEO:\s*\$?\s*([\d.,]+)\s*MILLONES", re.IGNORECASE)
+JACKPOT_RE = re.compile(
+    r"ACUMULADO\s+DEL\s+SORTEO:\s*\$?\s*([\d.,]+)\s*MILLONES", re.IGNORECASE
+)
 
 
 def parse_spanish_date(text: str) -> str | None:
@@ -111,14 +122,20 @@ def parse_results_page(html: str) -> list[dict]:
         date_td = tr.select_one("td.creation-date-results")
         date_iso = parse_spanish_date(date_td.get_text(strip=True)) if date_td else None
         if date_iso is None:
-            logger.warning("fila sin fecha parseable: %s", tr.get_text(" ", strip=True)[:80])
+            logger.warning(
+                "fila sin fecha parseable: %s", tr.get_text(" ", strip=True)[:80]
+            )
             continue
 
         # El resultado vive en el td con clase style-* (5 números + superbalota)
         result_td = tr.select_one('td[class*="style-"]')
         if result_td is None:
             continue
-        tokens = [t.strip() for t in re.split(r"\s*-\s*", result_td.get_text(" ", strip=True)) if t.strip()]
+        tokens = [
+            t.strip()
+            for t in re.split(r"\s*-\s*", result_td.get_text(" ", strip=True))
+            if t.strip()
+        ]
         if len(tokens) < 6:
             continue
         try:
@@ -138,13 +155,15 @@ def parse_results_page(html: str) -> list[dict]:
             if m:
                 official_id = int(m.group(1))
 
-        draws.append({
-            "game": game,
-            "date": date_iso,
-            "numbers": numbers,
-            "superbalota": superbalota,
-            "official_id": official_id,
-        })
+        draws.append(
+            {
+                "game": game,
+                "date": date_iso,
+                "numbers": numbers,
+                "superbalota": superbalota,
+                "official_id": official_id,
+            }
+        )
     return draws
 
 
@@ -205,16 +224,20 @@ def to_csv(draws: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
-        writer.writerow(["draw_id", "date", "numbers", "superbalota", "jackpot", "game"])
+        writer.writerow(
+            ["draw_id", "date", "numbers", "superbalota", "jackpot", "game"]
+        )
         for i, d in enumerate(draws, start=1):
-            writer.writerow([
-                i,
-                d["date"],
-                json.dumps(d["numbers"]),
-                d["superbalota"],
-                d.get("jackpot"),
-                d["game"],
-            ])
+            writer.writerow(
+                [
+                    i,
+                    d["date"],
+                    json.dumps(d["numbers"]),
+                    d["superbalota"],
+                    d.get("jackpot"),
+                    d["game"],
+                ]
+            )
 
 
 def to_json(draws: list[dict], path: Path) -> None:
@@ -223,7 +246,9 @@ def to_json(draws: list[dict], path: Path) -> None:
         json.dump(draws, fh, ensure_ascii=False)
 
 
-def write_metadata(baloto: list[dict], revancha: list[dict], current_jackpot: int | None) -> None:
+def write_metadata(
+    baloto: list[dict], revancha: list[dict], current_jackpot: int | None
+) -> None:
     start = min(d["date"] for d in baloto)
     end = max(d["date"] for d in baloto)
     metadata = {
@@ -286,8 +311,12 @@ def run() -> None:
 
     logger.info(
         "OK: %s Baloto (%s → %s), %s Revancha (%s → %s), jackpot actual=%s",
-        len(baloto), baloto[0]["date"], baloto[-1]["date"],
-        len(revancha), revancha[0]["date"], revancha[-1]["date"],
+        len(baloto),
+        baloto[0]["date"],
+        baloto[-1]["date"],
+        len(revancha),
+        revancha[0]["date"],
+        revancha[-1]["date"],
         current_jackpot,
     )
 

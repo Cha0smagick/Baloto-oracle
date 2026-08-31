@@ -12,7 +12,7 @@ reales (los sábados y miércoles cubren todo el período; los lunes solo desde
 """
 
 import json
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,7 +20,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 PROCESSED = BASE_DIR / "data" / "processed"
 OUT = BASE_DIR / "src" / "js" / "data.js"
 
-WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+WEEKDAY_NAMES = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
 
 
 def load(name: str):
@@ -36,7 +44,9 @@ def fix_draw_days(metadata: dict, baloto: list) -> dict:
         by_day[WEEKDAY_NAMES[dt.weekday()]].append(d["date"])
 
     counts = {k: len(v) for k, v in by_day.items()}
-    ranges = {k: {"start": min(v), "end": max(v), "count": len(v)} for k, v in by_day.items()}
+    ranges = {
+        k: {"start": min(v), "end": max(v), "count": len(v)} for k, v in by_day.items()
+    }
     ordered = sorted(counts.keys(), key=lambda k: WEEKDAY_NAMES.index(k))
     metadata["draw_days"] = ordered
     metadata["draw_day_ranges"] = ranges
@@ -79,7 +89,9 @@ def main() -> None:
         f"data.js escrito: {len(baloto)} baloto, {len(revancha)} revancha, "
         f"{OUT.stat().st_size} bytes | draw_days={metadata['draw_days']}"
     )
-    print(f"draw_day_ranges={json.dumps(metadata['draw_day_ranges'], ensure_ascii=False)}")
+    print(
+        f"draw_day_ranges={json.dumps(metadata['draw_day_ranges'], ensure_ascii=False)}"
+    )
 
 
 if __name__ == "__main__":
