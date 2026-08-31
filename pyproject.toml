@@ -1,0 +1,5 @@
+[tool.ruff.lint]
+# Replica el default clásico de ruff (E4, E7, E9, F) para fijar el
+# comportamiento del lint ante las versiones recientes de ruff que
+# ampliaron el conjunto de reglas por defecto.
+select = ["E4", "E7", "E9", "F"]
