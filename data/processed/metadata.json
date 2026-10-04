@@ -1,9 +1,9 @@
 {
-  "last_updated": "2026-10-03T10:48:07.999785+00:00",
+  "last_updated": "2026-10-04T11:30:08.521907+00:00",
   "total_draws": 625,
   "date_range": {
-    "start": "2021-06-09",
-    "end": "2026-09-30"
+    "start": "2021-06-12",
+    "end": "2026-10-03"
   },
   "games": [
     "Baloto",
@@ -17,16 +17,16 @@
   ],
   "draw_time": "23:00 COT",
   "source": "https://www.baloto.com/resultados (sitio oficial — scraping paginado, páginas 1..125, sin datos sintéticos)",
-  "current_jackpot": 61200000000,
+  "current_jackpot": 61600000000,
   "draw_day_ranges": {
-    "Wednesday": {
-      "start": "2021-06-09",
-      "end": "2026-09-30",
-      "count": 278
-    },
     "Saturday": {
       "start": "2021-06-12",
-      "end": "2026-09-26",
+      "end": "2026-10-03",
+      "count": 278
+    },
+    "Wednesday": {
+      "start": "2021-06-16",
+      "end": "2026-09-30",
       "count": 277
     },
     "Monday": {
