@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-10-06T12:23:48.591535+00:00",
+  "last_updated": "2026-10-07T06:16:11.798527+00:00",
   "total_draws": 625,
   "date_range": {
     "start": "2021-05-29",
@@ -17,7 +17,7 @@
   ],
   "draw_time": "23:00 COT",
   "source": "https://www.baloto.com/resultados (sitio oficial — scraping paginado, páginas 1..125, sin datos sintéticos)",
-  "current_jackpot": 61600000000,
+  "current_jackpot": 4300000000,
   "draw_day_ranges": {
     "Saturday": {
       "start": "2021-05-29",

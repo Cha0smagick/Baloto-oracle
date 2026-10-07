@@ -1124,7 +1124,7 @@
       "probability_at_least_one": 100.0
     },
     "jackpot_statistics": {
-      "current_jackpot": 61600000000.0,
+      "current_jackpot": 4300000000.0,
       "mean_jackpot": null,
       "median_jackpot": null,
       "max_jackpot": null,
@@ -2169,9 +2169,9 @@
     }
   },
   "metadata": {
-    "analysis_date": "2026-10-06T12:23:51.477020",
+    "analysis_date": "2026-10-07T06:16:14.838488",
     "data_source": {
-      "last_updated": "2026-10-06T12:23:48.591535+00:00",
+      "last_updated": "2026-10-07T06:16:11.798527+00:00",
       "total_draws": 625,
       "date_range": {
         "start": "2021-05-29",
@@ -2189,7 +2189,7 @@
       ],
       "draw_time": "23:00 COT",
       "source": "https://www.baloto.com/resultados (sitio oficial \u2014 scraping paginado, p\u00e1ginas 1..125, sin datos sint\u00e9ticos)",
-      "current_jackpot": 61600000000
+      "current_jackpot": 4300000000
     },
     "total_draws_analyzed": 625,
     "disclaimer": "Lottery draws are independent random events. Past performance does not predict future results. This analysis is for entertainment and educational purposes only."
