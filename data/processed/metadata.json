@@ -1,8 +1,8 @@
 {
-  "last_updated": "2026-10-18T10:04:35.484484+00:00",
+  "last_updated": "2026-10-19T05:01:06.310425+00:00",
   "total_draws": 625,
   "date_range": {
-    "start": "2021-06-16",
+    "start": "2021-06-30",
     "end": "2026-10-17"
   },
   "games": [
@@ -20,12 +20,12 @@
   "current_jackpot": 15600000000,
   "draw_day_ranges": {
     "Wednesday": {
-      "start": "2021-06-16",
+      "start": "2021-06-30",
       "end": "2026-10-14",
       "count": 277
     },
     "Saturday": {
-      "start": "2021-06-19",
+      "start": "2021-07-03",
       "end": "2026-10-17",
       "count": 277
     },
