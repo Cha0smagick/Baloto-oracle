@@ -99,48 +99,19 @@ jobs:
             sleep 5
           done
 
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: fetch-and-analyze
-    if: needs.fetch-and-analyze.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      # upload-pages-artifact@v3 no tiene input `exclude` (se ignoraba con un
-      # warning y publicaba scripts/, requirements.txt, README…). Se publica un
-      # staging con solo lo que el sitio necesita.
-      - name: Stage site
-        run: |
-          mkdir -p _site
-          cp -r index.html src assets data .nojekyll _site/
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+  # El despliegue vive en deploy.yml (disparado por cualquier push a master).
+  # Tenerlo también aquí duplicaba publicaciones del mismo contenido y solo
+  # cubría los cron: un push manual nunca desplegaba.
 
   notify:
     name: Notify on Changes
-    needs: [fetch-and-analyze, deploy]
+    needs: [fetch-and-analyze]
     if: needs.fetch-and-analyze.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions: {}
     steps:
       - name: Send notification
         run: |
-          echo "Baloto data updated and deployed"
+          echo "Baloto data updated; el deploy lo dispara el push a master."
           echo "New analysis available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
           echo "Updated: $(date -u +'%Y-%m-%d %H:%M UTC')"

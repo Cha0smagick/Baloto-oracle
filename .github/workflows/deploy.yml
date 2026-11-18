@@ -1,0 +1,62 @@
+name: Deploy to GitHub Pages
+
+# Único publicador del sitio. Antes solo desplegaba el workflow de datos
+# (disparado por schedule), así que un push a master —un fix de frontend, por
+# ejemplo— no llegaba nunca a producción: la web seguía sirviendo el main.js
+# viejo. Ahora cualquier push a master publica.
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # El sitio es estático: si el JS no parsea, no se publica.
+      - name: Check JS syntax
+        run: |
+          node --check src/js/main.js
+          node --check src/js/data.js
+
+      # upload-pages-artifact@v3 no tiene input `exclude` (se ignoraba con un
+      # warning y publicaba scripts/, requirements.txt, README…). Staging con
+      # solo lo que el sitio necesita.
+      - name: Stage site
+        run: |
+          mkdir -p _site
+          cp -r index.html src assets data .nojekyll _site/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -68,6 +68,44 @@ def check_draws(draws, game: str) -> None:
             fail(f"{game}: fecha con formato inválido: {d['date']}")
 
 
+def check_predictions(analysis: dict) -> None:
+    """El top-10/top-5 publicado debe coincidir con el ranking por probabilidad.
+
+    Si las dos representaciones se separan, la web puede mostrar un ranking
+    distinto del que dice el modelo (es exactamente el bug que tenía el "Top 10",
+    que renderizaba 1,2,3…10 porque las claves numéricas se iteran por índice).
+    """
+    pred = analysis.get("predictions", {}).get("next_draw_numbers", {})
+    probs = pred.get("probabilities") or {}
+    if len(probs) != 43:
+        fail(f"probabilities debe tener 43 números, tiene {len(probs)}")
+
+    ranked = [
+        int(k) for k, _ in sorted(probs.items(), key=lambda kv: kv[1], reverse=True)
+    ]
+    top10 = [int(n) for n in pred.get("top_10_most_likely", [])]
+    top5 = [int(n) for n in pred.get("top_5_most_likely", [])]
+    if top10 != ranked[:10]:
+        fail(f"top_10_most_likely {top10} no coincide con el ranking {ranked[:10]}")
+    if top5 != ranked[:5]:
+        fail(f"top_5_most_likely {top5} no coincide con el ranking {ranked[:5]}")
+    if abs(sum(probs.values()) - 5) > 1e-6:
+        fail(f"probabilities suma {sum(probs.values())}, debe sumar 5")
+
+    sb = analysis.get("predictions", {}).get("next_superbalota", {})
+    sb_probs = sb.get("probabilities") or {}
+    if len(sb_probs) != 16:
+        fail(f"probabilities de superbalota debe tener 16, tiene {len(sb_probs)}")
+    sb_ranked = [
+        int(k) for k, _ in sorted(sb_probs.items(), key=lambda kv: kv[1], reverse=True)
+    ]
+    sb_top = [int(n) for n in sb.get("most_likely", [])]
+    if sb_top != sb_ranked[: len(sb_top)]:
+        fail(
+            f"most_likely {sb_top} no coincide con el ranking {sb_ranked[:len(sb_top)]}"
+        )
+
+
 def main() -> None:
     if not DATA_JS.exists():
         fail("no existe src/js/data.js")
@@ -100,6 +138,8 @@ def main() -> None:
         fail(f"metadata.total_draws={metadata['total_draws']} != {len(baloto)}")
     if analysis["metadata"]["total_draws_analyzed"] != len(baloto):
         fail("analysis_results.json analizó otro dataset")
+
+    check_predictions(analysis)
 
     try:
         validation = load_json("validation_results.json")
