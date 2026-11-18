@@ -403,11 +403,29 @@ pre {
 }
 
 .title-main {
-    display: block;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.22em;
+    line-height: 1;
+}
+
+/* El degradado va solo en la palabra, no en el contenedor: con
+   background-clip:text en un flex que contiene una imagen, el fondo se recorta
+   a los glifos y la imagen queda fuera del flujo visual esperado. */
+.title-word {
     background: linear-gradient(135deg, var(--text-primary), var(--accent-primary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+/* 0.9em deja la tinta del wordmark (82/101 del PNG) a la altura de las
+   mayúsculas de "Oracle". */
+.title-logo {
+    height: 0.9em;
+    width: auto;
+    display: block;
 }
 
 .title-sub {
@@ -1303,7 +1321,11 @@ pre {
     .hero-description { margin-left: auto; margin-right: auto; }
     .hero-stats { grid-template-columns: repeat(4, 1fr); }
     .hero-actions { justify-content: center; }
-    .hero-visual { order: -1; }
+    /* `text-align: center` no afecta a un flex: el logo y "Oracle" quedaban
+       pegados a la izquierda mientras el resto se centraba. */
+    .title-main { justify-content: center; }
+    /* Sin `order: -1` en .hero-visual: en pantallas estrechas el gráfico de
+       400 px empujaba el <h1> con la marca fuera de la primera pantalla. */
     
     .chart-grid {
         grid-template-columns: 1fr;
