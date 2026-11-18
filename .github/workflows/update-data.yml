@@ -1,4 +1,4 @@
-name: 🔄 Update Baloto Data & Analysis
+name: Update Baloto Data & Analysis
 
 on:
   schedule:
@@ -12,16 +12,19 @@ on:
         default: 'false'
         type: boolean
 
-permissions:
-  contents: write
-  pages: write
-  id-token: write
+# Dos crons + dispatch pueden solaparse con un push humano: sin esto el
+# `git push` se rechaza y la actualización del día se pierde en silencio.
+concurrency:
+  group: update-data
+  cancel-in-progress: false
 
 jobs:
   fetch-and-analyze:
-    name: 📊 Fetch Data & Run Analysis
+    name: Fetch Data & Run Analysis
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    permissions:
+      contents: write
     outputs:
       changed: ${{ steps.fetch.outputs.changed }}
     steps:
@@ -30,57 +33,82 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
+
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+
+      # El diff de git no sirve para detectar cambios: metadata.last_updated
+      # cambia en cada corrida, así que siempre había "cambios" y el commit
+      # corría 1-2 veces al día sin datos nuevos.
       - name: Fetch latest Baloto data
         id: fetch
         run: |
+          BEFORE=$(python -c "import json;print(json.load(open('data/processed/metadata.json'))['date_range']['end'])" 2>/dev/null || echo "none")
           python scripts/fetch_baloto_data.py
-          if git diff --quiet data/ src/js/data.js; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No new data found"
+          AFTER=$(python -c "import json;print(json.load(open('data/processed/metadata.json'))['date_range']['end'])")
+          echo "Último sorteo: $BEFORE -> $AFTER"
+          if [ "$BEFORE" = "$AFTER" ] && [ "${{ inputs.force_update }}" != "true" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No new draws"
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "New data detected"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "New draws detected"
           fi
+
       - name: Run statistical analysis
-        run: |
-          python scripts/analyze_baloto.py
+        run: python scripts/analyze_baloto.py
+
+      # validate_baloto.py no se invocaba en ningún workflow: la sección
+      # "Validación Estadística" servía JSON congelado de meses atrás.
+      - name: Run statistical validation
+        run: python scripts/validate_baloto.py
+
       - name: Generate embedded data.js
+        run: python scripts/generate_data_js.py
+
+      # Falla si data.js no parsea o no cuadra con baloto.json. Sin esto, un
+      # artefacto corrupto llegaba a producción: el push del bot usa
+      # GITHUB_TOKEN y GitHub no dispara CI para eventos de ese token.
+      - name: Verify published artifact
         run: |
-          python scripts/generate_data_js.py
-      - name: Verify analysis output
-        run: |
-          python -c "
-          import json
-          with open('data/processed/analysis_results.json') as f:
-              data = json.load(f)
-          print(f'Analysis complete: {len(data.get(\"descriptive\", {}))} descriptive sections')
-          print(f'Inferential tests: {len(data.get(\"inferential\", {}))} tests')
-          print(f'Predictions: {len(data.get(\"predictions\", {}))} sections')
-          "
+          python scripts/verify_output.py
+          node --check src/js/data.js
+
       - name: Commit and push data changes
-        if: steps.fetch.outputs.changed == 'true' || github.event.inputs.force_update == 'true'
+        if: steps.fetch.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/ src/js/data.js
-          git commit -m "🔄 Update Baloto data & analysis - $(date -u +'%Y-%m-%d %H:%M UTC')" || echo "Nothing to commit"
-          git push
+          git add data/ src/js/data.js index.html
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore(data): actualizar sorteos y análisis - $(date -u +'%Y-%m-%d %H:%M UTC')"
+          for i in 1 2 3; do
+            git pull --rebase --autostash && git push && break
+            echo "push intento $i falló; reintentando"
+            sleep 5
+          done
 
   deploy:
-    name: 🚀 Deploy to GitHub Pages
+    name: Deploy to GitHub Pages
     needs: fetch-and-analyze
     if: needs.fetch-and-analyze.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -89,29 +117,30 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v4
+      # upload-pages-artifact@v3 no tiene input `exclude` (se ignoraba con un
+      # warning y publicaba scripts/, requirements.txt, README…). Se publica un
+      # staging con solo lo que el sitio necesita.
+      - name: Stage site
+        run: |
+          mkdir -p _site
+          cp -r index.html src assets data .nojekyll _site/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
-          exclude: |
-            .git/**
-            .github/**
-            scripts/**
-            docs/**
-            **/*.py
-            **/*.md
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 
   notify:
-    name: 📢 Notify on Changes
+    name: Notify on Changes
     needs: [fetch-and-analyze, deploy]
-    if: needs.fetch-and-analyze.outputs.changed == 'true' || github.event.inputs.force_update == 'true'
+    if: needs.fetch-and-analyze.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - name: Send notification
         run: |
-          echo "✅ Baloto data updated and deployed!"
-          echo "📊 New analysis available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
-          echo "🕐 Updated: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          echo "Baloto data updated and deployed"
+          echo "New analysis available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          echo "Updated: $(date -u +'%Y-%m-%d %H:%M UTC')"

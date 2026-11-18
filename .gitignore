@@ -156,9 +156,7 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-baloto-oracle/data/raw/*.csv
-baloto-oracle/data/processed/*.json
-!baloto-oracle/data/processed/.gitkeep
+# (los datos de data/ SÍ se commitean: GitHub Pages sirve el sitio estático)
 
 # Node
 node_modules/

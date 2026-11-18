@@ -223,6 +223,8 @@ async function loadData() {
                 console.error('initializeVisualizer falló:', e);
             }
         }
+        // HTML puro: se pinta aunque falle el CDN.
+        renderHtmlSections(failedSections);
         try {
             populateLatestDraws();
         } catch (e) {
@@ -350,9 +352,29 @@ function initializeCharts() {
     createProbabilityChart();
     createHeroChart();
     renderInferentialTests();
-    renderInterpretation();
-    renderPredictiveModeling();
-    renderValidation();
+}
+
+// Secciones que NO dependen de Chart.js ni de d3: si el CDN falla, deben
+// renderizarse igual. Cada una va aislada para que un throw no tumbe las demás.
+function renderHtmlSections(failedSections) {
+    try {
+        renderInterpretation();
+    } catch (e) {
+        failedSections.push('Interpretación');
+        console.error('renderInterpretation falló:', e);
+    }
+    try {
+        renderPredictiveModeling();
+    } catch (e) {
+        failedSections.push('Modelos predictivos');
+        console.error('renderPredictiveModeling falló:', e);
+    }
+    try {
+        renderValidation();
+    } catch (e) {
+        failedSections.push('Validación');
+        console.error('renderValidation falló:', e);
+    }
 }
 
 function getChartColors(count, scheme = 'primary') {
@@ -376,6 +398,46 @@ function interpolateColor(color1, color2, factor) {
 function hexToRgb(hex) {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+}
+
+// Chart.js dibuja sobre canvas y NO resuelve variables CSS: un color
+// 'var(--text-muted)' es un valor inválido y el contexto conserva el anterior
+// (negro por defecto). Hay que leer el valor computado y re-aplicarlo al
+// cambiar de tema.
+function cssVar(name, fallback = '#888888') {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+}
+
+function chartTheme() {
+    return {
+        text: cssVar('--text-primary'),
+        secondary: cssVar('--text-secondary'),
+        muted: cssVar('--text-muted'),
+        card: cssVar('--bg-card'),
+        border: cssVar('--border-color')
+    };
+}
+
+function applyChartTheme() {
+    const t = chartTheme();
+    Object.values(state.charts).forEach(chart => {
+        if (!chart || !chart.options) return;
+        const plugins = chart.options.plugins || {};
+        if (plugins.title) plugins.title.color = t.secondary;
+        if (plugins.tooltip) {
+            plugins.tooltip.backgroundColor = t.card;
+            plugins.tooltip.titleColor = t.text;
+            plugins.tooltip.bodyColor = t.secondary;
+            plugins.tooltip.borderColor = t.border;
+        }
+        if (plugins.legend?.labels) plugins.legend.labels.color = t.secondary;
+        Object.values(chart.options.scales || {}).forEach(scale => {
+            if (scale.ticks) scale.ticks.color = t.muted;
+            if (scale.grid) scale.grid.color = t.border;
+        });
+        chart.update('none');
+    });
 }
 
 // ==========================================================================
@@ -431,7 +493,12 @@ function createFrequencyHeatmap() {
         .attr('stroke-width', 1)
         .on('mouseover', function(event, d) {
             d3.select(this).attr('stroke', 'var(--accent-primary)').attr('stroke-width', 2);
-            showTooltip(event, d, freqData[d]);
+            showTooltip(event, `Número ${d}`, [
+                ['Frecuencia', `${freqData[d].count} (${freqData[d].percentage}%)`],
+                ['Esperado', freqData[d].expected],
+                ['Desviación', `${freqData[d].deviation > 0 ? '+' : ''}${freqData[d].deviation}`],
+                ['Z-score', freqData[d].z_score]
+            ]);
         })
         .on('mouseout', function() {
             d3.select(this).attr('stroke', 'var(--border-color)').attr('stroke-width', 1);
@@ -465,7 +532,7 @@ function createHeatmapLegend(container, colorScale, min, max) {
     
     const svg = legendContainer.append('svg')
         .attr('width', '100%')
-        .attr('height', 30);
+        .attr('height', 34);
     
     const gradient = svg.append('defs')
         .append('linearGradient')
@@ -481,19 +548,19 @@ function createHeatmapLegend(container, colorScale, min, max) {
         .attr('stop-color', d => colorScale(min + (max - min) * d));
     
     svg.append('rect')
-        .attr('x', 0).attr('y', 5)
-        .attr('width', '100%').attr('height', 15)
+        .attr('x', 0).attr('y', 16)
+        .attr('width', '100%').attr('height', 12)
         .attr('rx', 3)
         .style('fill', 'url(#freq-gradient)');
     
     svg.append('text')
-        .attr('x', 0).attr('y', 4)
+        .attr('x', 0).attr('y', 10)
         .attr('font-size', '10px')
         .attr('fill', 'var(--text-muted)')
         .text(`Menos frecuente (${min})`);
     
     svg.append('text')
-        .attr('x', '100%').attr('y', 4)
+        .attr('x', '100%').attr('y', 10)
         .attr('text-anchor', 'end')
         .attr('font-size', '10px')
         .attr('fill', 'var(--text-muted)')
@@ -501,7 +568,7 @@ function createHeatmapLegend(container, colorScale, min, max) {
 }
 
 let tooltip = null;
-function showTooltip(event, number, data) {
+function showTooltip(event, title, lines) {
     if (!tooltip) {
         tooltip = d3.select('body').append('div')
             .attr('class', 'd3-tooltip')
@@ -516,13 +583,13 @@ function showTooltip(event, number, data) {
             .style('box-shadow', 'var(--shadow-lg)');
     }
     
-    tooltip.html(`
-        <strong>Número ${number}</strong><br>
-        Frecuencia: ${data.count} (${data.percentage}%)<br>
-        Esperado: ${data.expected}<br>
-        Desviación: ${data.deviation > 0 ? '+' : ''}${data.deviation}<br>
-        Z-score: ${data.z_score}
-    `)
+    // `lines` son pares [etiqueta, valor]: antes la plantilla era fija e imprimía
+    // "Esperado: undefined" cuando el llamador no pasaba esos campos.
+    const body = (lines || [])
+        .filter(([, value]) => value !== undefined && value !== null)
+        .map(([label, value]) => `${label}: ${value}`)
+        .join('<br>');
+    tooltip.html(`<strong>${title}</strong>${body ? '<br>' + body : ''}`)
     .style('left', (event.pageX + 10) + 'px')
     .style('top', (event.pageY - 10) + 'px')
     .style('opacity', 1);
@@ -539,10 +606,12 @@ function createSuperbalotaChart() {
     const ctx = document.getElementById('superbalota-chart');
     if (!ctx) return;
     
-    const freqData = state.data.analysis?.descriptive?.superbalota_frequencies?.frequencies || {};
+    const sbData = state.data.analysis?.descriptive?.superbalota_frequencies || {};
+    const freqData = sbData.frequencies || {};
     const numbers = Object.keys(freqData).map(Number).sort((a, b) => a - b);
     const counts = numbers.map(n => freqData[n].count);
-    const percentages = numbers.map(n => freqData[n].percentage);
+    const hot = sbData.hot_superbalotas || [];
+    const cold = sbData.cold_superbalotas || [];
     
     destroyChart('superbalota');
     state.charts.superbalota = new Chart(ctx, {
@@ -552,21 +621,22 @@ function createSuperbalotaChart() {
             datasets: [{
                 label: 'Frecuencia',
                 data: counts,
-                backgroundColor: numbers.map((n, i) => 
-                    i < 3 ? 'rgba(237, 28, 36, 0.8)' : 
-                    i > numbers.length - 4 ? 'rgba(239, 68, 68, 0.5)' : 
+                backgroundColor: numbers.map(n =>
+                    hot.includes(n) ? 'rgba(237, 28, 36, 0.8)' :
+                    cold.includes(n) ? 'rgba(148, 163, 184, 0.5)' :
                     'rgba(255, 233, 3, 0.6)'
                 ),
-                borderColor: numbers.map((n, i) => 
-                    i < 3 ? 'rgba(237, 28, 36, 1)' : 
-                    i > numbers.length - 4 ? 'rgba(239, 68, 68, 1)' : 
+                borderColor: numbers.map(n =>
+                    hot.includes(n) ? 'rgba(237, 28, 36, 1)' :
+                    cold.includes(n) ? 'rgba(148, 163, 184, 1)' :
                     'rgba(255, 233, 3, 1)'
                 ),
                 borderWidth: 1,
                 borderRadius: 4
             }]
         },
-        options: getBarChartOptions('Frecuencia Superbalota', '%', true)
+        // Conteos, no porcentajes: antes el tooltip decía "47 %" sobre 47 apariciones.
+        options: getBarChartOptions('Frecuencia Superbalota (conteo)', 'Apariciones', false)
     });
 }
 
@@ -577,14 +647,16 @@ function createPositionChart() {
     const posData = state.data.analysis?.descriptive?.position_frequencies || {};
     const positions = ['position_1', 'position_2', 'position_3', 'position_4', 'position_5'];
     const numbers = Array.from({length: 43}, (_, i) => i + 1);
+    // Cinco colores distinguibles: el gradiente primario solo tiene dos rojos.
+    const palette = ['#ED1C24', '#FFB900', '#22c55e', '#3b82f6', '#a855f7'];
     
     const datasets = positions.map((pos, idx) => {
         const freq = posData[pos]?.frequencies || {};
         return {
             label: `${idx + 1}ª Posición`,
             data: numbers.map(n => freq[n] || 0),
-            borderColor: CONFIG.charts.gradients.primary[idx % 2 === 0 ? 0 : 1],
-            backgroundColor: CONFIG.charts.gradients.primary[idx % 2 === 0 ? 0 : 1].replace(')', ', 0.1)').replace('rgb', 'rgba'),
+            borderColor: palette[idx],
+            backgroundColor: palette[idx],
             fill: false,
             tension: 0.3,
             pointRadius: 0,
@@ -858,13 +930,16 @@ function createProbabilityChart() {
                                 type: 'line',
                                 mode: 'horizontal',
                                 scale: 'y',
-                                value: 100 / 43,
+                                // Las probabilidades están normalizadas para sumar 5
+                                // (5 números por sorteo): la línea base NO es 100/43
+                                // = 2.33 %, sino 500/43 = 11.63 %.
+                                value: 500 / 43,
                                 borderColor: 'rgba(239, 68, 68, 1)',
                                 borderWidth: 2,
                                 borderDash: [5, 5],
                                 label: {
                                     enabled: true,
-                                    content: 'Probabilidad teórica (2.33%)',
+                                    content: 'Probabilidad teórica (11.63%)',
                                     position: 'start',
                                     backgroundColor: 'rgba(239, 68, 68, 1)',
                                     color: 'white'
@@ -881,7 +956,8 @@ function createProbabilityChart() {
 function createHeroChart() {
     const ctx = document.getElementById('hero-chart');
     if (!ctx) return;
-    
+
+    const t = chartTheme();
     const freqData = state.data.analysis?.descriptive?.number_frequencies?.frequencies || {};
     const numbers = Object.keys(freqData).map(Number).sort((a, b) => a - b);
     const counts = numbers.map(n => freqData[n].count);
@@ -910,10 +986,10 @@ function createHeroChart() {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'var(--bg-card)',
-                    titleColor: 'var(--text-primary)',
-                    bodyColor: 'var(--text-secondary)',
-                    borderColor: 'var(--border-color)',
+                    backgroundColor: t.card,
+                    titleColor: t.text,
+                    bodyColor: t.secondary,
+                    borderColor: t.border,
                     borderWidth: 1,
                     padding: 12,
                     callbacks: {
@@ -933,6 +1009,7 @@ function createHeroChart() {
 // Chart Options Helpers
 // ==========================================================================
 function getBarChartOptions(title, yLabel, showPercent = false) {
+    const t = chartTheme();
     return {
         responsive: true,
         maintainAspectRatio: false,
@@ -940,12 +1017,12 @@ function getBarChartOptions(title, yLabel, showPercent = false) {
         interaction: { intersect: false, mode: 'index' },
         plugins: {
             legend: { display: false },
-            title: { display: !!title, text: title, font: { size: 13, weight: 600 }, color: 'var(--text-secondary)', padding: { bottom: 10 } },
+            title: { display: !!title, text: title, font: { size: 13, weight: 600 }, color: t.secondary, padding: { bottom: 10 } },
             tooltip: {
-                backgroundColor: 'var(--bg-card)',
-                titleColor: 'var(--text-primary)',
-                bodyColor: 'var(--text-secondary)',
-                borderColor: 'var(--border-color)',
+                backgroundColor: t.card,
+                titleColor: t.text,
+                bodyColor: t.secondary,
+                borderColor: t.border,
                 borderWidth: 1,
                 padding: 12,
                 callbacks: {
@@ -956,11 +1033,11 @@ function getBarChartOptions(title, yLabel, showPercent = false) {
         scales: {
             x: {
                 grid: { display: false },
-                ticks: { color: 'var(--text-muted)', font: { size: 10 }, maxRotation: 0 }
+                ticks: { color: t.muted, font: { size: 10 }, maxRotation: 0 }
             },
             y: {
-                grid: { color: 'var(--border-color)', drawBorder: false },
-                ticks: { color: 'var(--text-muted)', font: { size: 10 }, callback: v => showPercent ? `${v}%` : v },
+                grid: { color: t.border, drawBorder: false },
+                ticks: { color: t.muted, font: { size: 10 }, callback: v => showPercent ? `${v}%` : v },
                 beginAtZero: true
             }
         }
@@ -975,14 +1052,15 @@ function getLineChartOptions(title, yLabel) {
 }
 
 function getDoughnutChartOptions() {
+    const t = chartTheme();
     return {
         responsive: true,
         maintainAspectRatio: false,
         animation: { animateRotate: true, animateScale: true, duration: 1500 },
         cutout: '65%',
         plugins: {
-            legend: { display: true },
-            tooltip: { backgroundColor: 'var(--bg-card)', titleColor: 'var(--text-primary)', bodyColor: 'var(--text-secondary)', borderColor: 'var(--border-color)', borderWidth: 1 }
+            legend: { display: true, labels: { color: t.secondary } },
+            tooltip: { backgroundColor: t.card, titleColor: t.text, bodyColor: t.secondary, borderColor: t.border, borderWidth: 1 }
         }
     };
 }
@@ -1021,6 +1099,13 @@ function renderTestResult(containerId, testData) {
     const container = document.getElementById(containerId);
     if (!container || !testData) return;
     
+    // Los JSON del pipeline pueden traer números como string: .toFixed() sobre
+    // un string es un TypeError que tumba el render entero.
+    const num = (v, digits = 6) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n.toFixed(digits) : '—';
+    };
+    
     let statusClass = 'pass';
     let icon = '✓';
     let title = 'No significativo';
@@ -1040,27 +1125,27 @@ function renderTestResult(containerId, testData) {
         detailsHtml += `<div class="detail-item"><span class="detail-label">Chi-Cuadrado</span><span class="detail-value">${testData.chi2_statistic}</span></div>`;
     }
     if (testData.ljung_box_statistic !== undefined) {
-        detailsHtml += `<div class="detail-item"><span class="detail-label">Ljung-Box</span><span class="detail-value">${testData.ljung_box_statistic}</span></div>`;
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Portmanteau Q</span><span class="detail-value">${testData.ljung_box_statistic}</span></div>`;
     }
-    if (testData.p_value !== undefined) {
-        detailsHtml += `<div class="detail-item"><span class="detail-label">Valor p</span><span class="detail-value">${testData.p_value.toFixed(6)}</span></div>`;
+    if (testData.p_value !== undefined && testData.p_value !== null) {
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Valor p</span><span class="detail-value">${num(testData.p_value)}</span></div>`;
     }
     if (testData.degrees_of_freedom !== undefined) {
         detailsHtml += `<div class="detail-item"><span class="detail-label">Grados Libertad</span><span class="detail-value">${testData.degrees_of_freedom}</span></div>`;
     }
     if (testData.mean_autocorrelation !== undefined) {
-        detailsHtml += `<div class="detail-item"><span class="detail-label">Autocorr. Media</span><span class="detail-value">${testData.mean_autocorrelation.toFixed(6)}</span></div>`;
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Autocorr. Media</span><span class="detail-value">${num(testData.mean_autocorrelation)}</span></div>`;
     }
     if (testData.mean_sum_ci) {
         detailsHtml += `<div class="detail-item"><span class="detail-label">IC Media Sumas</span><span class="detail-value">[${testData.mean_sum_ci[0]}, ${testData.mean_sum_ci[1]}]</span></div>`;
     }
-    if (testData.number_frequency_ci) {
-        detailsHtml += `<div class="detail-item"><span class="detail-label">IC Frec. Números</span><span class="detail-value">[${testData.number_frequency_ci[0].toFixed(4)}, ${testData.number_frequency_ci[1].toFixed(4)}]</span></div>`;
+    if (testData.expected_range_under_h0) {
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Banda esperada H0</span><span class="detail-value">[${testData.expected_range_under_h0[0]}, ${testData.expected_range_under_h0[1]}]</span></div>`;
     }
     if (testData.hot_significant_at_05 !== undefined) {
-        detailsHtml += `<div class="detail-item"><span class="detail-label">Calientes Sig.</span><span class="detail-value">${testData.hot_significant_at_05} / ${testData.hot_numbers_tested}</span></div>`;
-        detailsHtml += `<div class="detail-item"><span class="detail-label">Fríos Sig.</span><span class="detail-value">${testData.cold_significant_at_05} / ${testData.cold_numbers_tested}</span></div>`;
-        detailsHtml += `<div class="detail-item"><span class="detail-label">Bonferroni</span><span class="detail-value">${testData.bonferroni_threshold?.toFixed(6)}</span></div>`;
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Calientes p&lt;0.05</span><span class="detail-value">${testData.hot_significant_at_05} / ${testData.hot_numbers_tested}</span></div>`;
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Fríos p&lt;0.05</span><span class="detail-value">${testData.cold_significant_at_05} / ${testData.cold_numbers_tested}</span></div>`;
+        detailsHtml += `<div class="detail-item"><span class="detail-label">Bonferroni</span><span class="detail-value">${num(testData.bonferroni_threshold)}</span></div>`;
     }
     // FDR (Benjamini-Hochberg) counts
     if (testData.hot_fdr_significant_at_05 !== undefined) {
@@ -1154,11 +1239,18 @@ function populatePredictions() {
     const hasNumbers = numbersPred.probabilities && Object.keys(numbersPred.probabilities).length > 0;
     const hasSuper = superPred.probabilities && Object.keys(superPred.probabilities).length > 0;
 
+    // Las claves de `probabilities` son "1".."43": Object.entries las devuelve en
+    // orden de índice entero (1,2,3…), no en el orden del JSON. Hay que ordenar
+    // por valor o el "Top 10" muestra 1..10 con porcentajes desordenados.
+    const rankedEntries = (obj, n) => Object.entries(obj)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, n);
+
     // Top Numbers
     const topNumbersContainer = document.getElementById('top-numbers-prediction');
     if (topNumbersContainer) {
         if (hasNumbers) {
-            const top10 = Object.entries(numbersPred.probabilities).slice(0, 10);
+            const top10 = rankedEntries(numbersPred.probabilities, 10);
             topNumbersContainer.innerHTML = top10.map(([num, prob], idx) => `
                 <div class="prediction-item" style="animation-delay: ${idx * 50}ms">
                     <span class="prediction-rank">${idx + 1}</span>
@@ -1175,7 +1267,7 @@ function populatePredictions() {
     const superContainer = document.getElementById('superbalota-prediction');
     if (superContainer) {
         if (hasSuper) {
-            const topSuper = Object.entries(superPred.probabilities).slice(0, 5);
+            const topSuper = rankedEntries(superPred.probabilities, 5);
             superContainer.innerHTML = topSuper.map(([num, prob], idx) => `
                 <div class="prediction-item" style="animation-delay: ${idx * 50}ms">
                     <span class="prediction-rank">${idx + 1}</span>
@@ -1198,7 +1290,10 @@ function populatePredictions() {
             return;
         }
 
-        const jointProb = top5.reduce((acc, n) => acc * (numbersPred.probabilities[n] ?? 0), 1) * 100;
+        // El producto de probabilidades marginales NO es la probabilidad de
+        // acertar: cada una está normalizada a sumar 5, no es P(acierto).
+        // La probabilidad real de jackpot con una combinación es 1/(C(43,5)·16).
+        const jackpotOdds = 962598 * 16;
         comboContainer.innerHTML = `
             <div class="combo-numbers">
                 ${top5.map((num, idx) => {
@@ -1215,8 +1310,10 @@ function populatePredictions() {
             <div class="combo-info">
                 Basado en probabilidades bayesianas | 
                 Números: ${top5.join(', ')} | 
-                Superbalota: ${topSuper} | 
-                Probabilidad conjunta: ~${jointProb.toFixed(4)}%
+                Superbalota: ${topSuper}<br>
+                Probabilidad real de acertar el jackpot con esta combinación:
+                <strong>1 entre ${utils.formatNumber(jackpotOdds)}</strong> (0.0000065%).
+                El orden del modelo no cambia esa probabilidad.
             </div>
         `;
     }
@@ -1246,9 +1343,11 @@ function renderPredictiveModeling() {
     const getTopNumbers = (m) => {
         if (!m) return [];
         if (Array.isArray(m.top_5)) return m.top_5.slice(0, 5);
+        if (Array.isArray(m.top_5_most_likely)) return m.top_5_most_likely.slice(0, 5);
         if (Array.isArray(m.top_10)) return m.top_10.slice(0, 5);
+        if (Array.isArray(m.top_10_most_likely)) return m.top_10_most_likely.slice(0, 5);
         if (Array.isArray(m.predictions)) return m.predictions.slice(0, 5);
-        if (m.most_likely !== undefined) return [m.most_likely];
+        if (m.most_likely !== undefined) return [].concat(m.most_likely).slice(0, 5);
         return [];
     };
     
@@ -1284,67 +1383,65 @@ function renderValidation() {
     const container = document.getElementById('validation-container');
     if (!container) return;
     const v = state.data.validation;
-    if (!v || !v.blind_test || !v.supervised) {
+    if (!v) {
         container.innerHTML = '<p class="empty-state">La validación estadística se calculará en el siguiente análisis automático.</p>';
         return;
     }
     const fmtP = (p) => (p === null || p === undefined) ? '—' : (Number(p) < 0.001 ? Number(p).toExponential(2) : Number(p).toFixed(4));
-    const bt = v.blind_test;
-    const sp = v.supervised;
-    const us = v.unsupervised;
-    const ie = v.inferential_exact;
-    const analysis = state.data.analysis;
+    const bt = v.blind_test || null;
+    const sp = v.supervised || null;
+    const us = v.unsupervised || {};
+    const ie = v.inferential_exact || {};
 
-    const cards = [
-        {
-            title: '🎯 Prueba de Pares Ciegos (Walk-Forward)',
-            desc: 'Se entrena solo con sorteos anteriores y se compara la predicción contra el resultado real (150 sorteos de prueba).',
-            items: [
-                ['Bayesiano aciertos top-10/sorteo', `${bt.bayesiano?.mean_hits_top10 ?? '—'} (azar: ${bt.bayesiano?.expected_hits_top10_random ?? '—'})`],
-                ['Markov aciertos top-10/sorteo', `${bt.markov?.mean_hits_top10 ?? '—'} (azar: ${bt.markov?.expected_hits_top10_random ?? '—'})`],
-                ['Binomial bayesiano (p)', fmtP(bt.bayesiano?.binom_pvalue_top10)],
-                ['Binomial markov (p)', fmtP(bt.markov?.binom_pvalue_top10)],
-                ['Monte Carlo z-score', `${bt.monte_carlo_baseline?.bayesiano_vs_mc_zscore ?? '—'} (p=${fmtP(bt.monte_carlo_baseline?.bayesiano_vs_mc_pvalue)})`]
-            ],
-            conclusion: bt.conclusion
-        },
-        {
-            title: '🤖 Supervisado (Random Forest + Regresión Logística)',
-            desc: 'Clasificadores por número (1..43) entrenados en walk-forward; AUC vs 0.5 y lift vs 5/43.',
-            items: [
-                ['RF AUC medio', `${sp.random_forest?.mean_auc ?? '—'} (H0: 0.5)`],
-                ['LR AUC medio', `${sp.logistic_regression?.mean_auc ?? '—'} (H0: 0.5)`],
-                ['RF lift top-5', `${sp.random_forest?.lift_vs_random ?? '—'} (azar: 1.0)`],
-                ['LR lift top-5', `${sp.logistic_regression?.lift_vs_random ?? '—'} (azar: 1.0)`],
-                ['Aparición esperada por número', `${(sp.baseline_appearance_rate * 100).toFixed(2)}%`]
-            ],
-            conclusion: sp.conclusion
-        },
-        {
-            title: '🔍 No Supervisado (PCA + K-Means)',
-            desc: 'Se busca estructura latente en las características de los sorteos.',
-            items: [
-                ['Varianza PC1', `${us.pca?.explained_variance_ratio?.[0] ?? '—'}`],
-                ['Varianza acumulada 4 componentes', `${us.pca?.cumulative_variance?.slice(-1)[0] ?? '—'}`],
-                ['Silhouette k=2..6', `${Object.values(us.kmeans?.silhouette_by_k ?? {}).map(x => x.toFixed(3)).join(', ')}`]
-            ],
-            conclusion: us.conclusion || 'Sin estructura latente significativa.'
-        },
-        {
-            title: '📐 Inferencial Exacto',
-            desc: 'Tests de aleatoriedad, uniformidad e independencia.',
-            items: [
-                ['Cramér-von Mises (p)', fmtP(ie?.cramer_von_mises?.pvalue)],
-                ['Runs paridad (z, p)', `${ie?.runs_wald_wolfowitz?.parity?.z ?? '—'}, ${fmtP(ie?.runs_wald_wolfowitz?.parity?.pvalue)}`],
-                ['Runs alto/bajo (z, p)', `${ie?.runs_wald_wolfowitz?.high_low?.z ?? '—'}, ${fmtP(ie?.runs_wald_wolfowitz?.high_low?.pvalue)}`],
-                ['ANOVA posiciones (F, p)', `${ie?.anova_positions?.f_statistic ?? '—'}, ${fmtP(ie?.anova_positions?.pvalue)}`],
-                ['Fisher par 32-33 (OR, p)', `${ie?.fisher_exact_top_pair?.odds_ratio ?? '—'}, ${fmtP(ie?.fisher_exact_top_pair?.pvalue)}`],
-                ['Gaps Poisson-geométrico (p)', fmtP(ie?.poisson_gaps?.mean_dispersion_pvalue)],
-                ['Entropía de Shannon (ratio)', ie?.shannon_entropy?.ratio ?? '—']
-            ],
-            conclusion: ie?.conclusion
-        }
-    ];
+    const cards = [];
+    if (bt) cards.push({
+        title: '🎯 Prueba de Pares Ciegos (Walk-Forward)',
+        desc: 'Se entrena solo con sorteos anteriores y se compara la predicción contra el resultado real (150 sorteos de prueba).',
+        items: [
+            ['Bayesiano aciertos top-10/sorteo', `${bt.bayesiano?.mean_hits_top10 ?? '—'} (azar: ${bt.bayesiano?.expected_hits_top10_random ?? '—'})`],
+            ['Markov aciertos top-10/sorteo', `${bt.markov?.mean_hits_top10 ?? '—'} (azar: ${bt.markov?.expected_hits_top10_random ?? '—'})`],
+            ['Binomial bayesiano (p)', fmtP(bt.bayesiano?.binom_pvalue_top10)],
+            ['Binomial markov (p)', fmtP(bt.markov?.binom_pvalue_top10)]
+        ],
+        conclusion: bt.conclusion
+    });
+    if (sp) cards.push({
+        title: '🤖 Supervisado (Random Forest + Regresión Logística)',
+        desc: 'Clasificadores por número (1..43) entrenados en walk-forward; AUC vs 0.5 y lift vs 5/43.',
+        items: [
+            ['RF AUC medio', `${sp.random_forest?.mean_auc ?? '—'} (H0: 0.5)`],
+            ['LR AUC medio', `${sp.logistic_regression?.mean_auc ?? '—'} (H0: 0.5)`],
+            ['RF lift top-5', `${sp.random_forest?.lift_vs_random ?? '—'} (azar: 1.0)`],
+            ['LR lift top-5', `${sp.logistic_regression?.lift_vs_random ?? '—'} (azar: 1.0)`],
+            ['Aparición esperada por número', sp.baseline_appearance_rate != null
+                ? `${(Number(sp.baseline_appearance_rate) * 100).toFixed(2)}%`
+                : '—']
+        ],
+        conclusion: sp.conclusion
+    });
+    cards.push({
+        title: '🔍 No Supervisado (PCA + K-Means)',
+        desc: 'Se busca estructura latente en las características de los sorteos.',
+        items: [
+            ['Varianza PC1', `${us.pca?.explained_variance_ratio?.[0] ?? '—'}`],
+            ['Varianza acumulada 4 componentes', `${us.pca?.cumulative_variance?.slice(-1)[0] ?? '—'}`],
+            ['Silhouette k=2..6', Object.values(us.kmeans?.silhouette_by_k ?? {}).map(x => Number(x).toFixed(3)).join(', ') || '—']
+        ],
+        conclusion: us.conclusion || 'Sin estructura latente significativa.'
+    });
+    if (ie) cards.push({
+        title: '📐 Inferencial Exacto',
+        desc: 'Tests de aleatoriedad, uniformidad e independencia (p calibrado por simulación donde la nula lo exige).',
+        items: [
+            ['Cramér-von Mises (p)', fmtP(ie.cramer_von_mises?.pvalue)],
+            ['Runs paridad (z, p)', `${ie.runs_wald_wolfowitz?.parity?.z ?? '—'}, ${fmtP(ie.runs_wald_wolfowitz?.parity?.pvalue)}`],
+            ['Runs alto/bajo (z, p)', `${ie.runs_wald_wolfowitz?.high_low?.z ?? '—'}, ${fmtP(ie.runs_wald_wolfowitz?.high_low?.pvalue)}`],
+            ['Fisher par más fuerte (OR, p)', `${ie.fisher_exact_top_pair?.odds_ratio ?? '—'}, ${fmtP(ie.fisher_exact_top_pair?.pvalue)}`],
+            ['Gaps GOF geométrico (p)', fmtP(ie.poisson_gaps?.geometric_gof_pvalue ?? ie.poisson_gaps?.mean_dispersion_pvalue)],
+            ['Entropía de Shannon (ratio)', ie.shannon_entropy?.ratio ?? '—']
+        ],
+        conclusion: ie.conclusion
+    });
 
     const cardsHtml = cards.filter(c => c.items.length).map(c => `
         <div class="model-card">
@@ -1408,9 +1505,12 @@ function renderValidation() {
 
     const ie2 = v.inferential_exact || {};
     const tests = [];
-    const addTest = (label, pval, note) => {
+    let passCount = 0;
+    // `forcedPass` permite usar el veredicto FDR (Fisher) en vez del p bruto.
+    const addTest = (label, pval, note, forcedPass) => {
         const p = Number(pval);
-        const pass = !isNaN(p) && p >= 0.05;
+        const pass = forcedPass !== undefined ? forcedPass : (!isNaN(p) && p >= 0.05);
+        if (pass) passCount++;
         tests.push('<div class="metric-row"><span class="metric-label">' + label + '</span>' +
             '<span class="metric-value"><span class="test-badge ' + (pass ? 'pass' : 'fail') + '">' +
             (pass ? 'PASADA' : 'NO PASADA') + '</span>' +
@@ -1421,14 +1521,14 @@ function renderValidation() {
     addTest('Runs paridad', ie2.runs_wald_wolfowitz && ie2.runs_wald_wolfowitz.parity && ie2.runs_wald_wolfowitz.parity.pvalue);
     addTest('Runs alto/bajo', ie2.runs_wald_wolfowitz && ie2.runs_wald_wolfowitz.high_low && ie2.runs_wald_wolfowitz.high_low.pvalue);
     addTest('Ljung-Box (lag 1)', ie2.ljung_box_sum_series && ie2.ljung_box_sum_series.lag1 && ie2.ljung_box_sum_series.lag1.pvalue);
-    addTest('ANOVA posiciones', ie2.anova_positions && ie2.anova_positions.pvalue, 'esperada (muestreo sin reemplazo)');
-    addTest('Fisher par 32-33', ie2.fisher_exact_top_pair && ie2.fisher_exact_top_pair.pvalue);
-    addTest('Poisson-geométrico', ie2.poisson_gaps && ie2.poisson_gaps.mean_dispersion_pvalue);
+    addTest('Fisher par más fuerte',
+        ie2.fisher_exact_top_pair && ie2.fisher_exact_top_pair.pvalue,
+        ie2.fisher_exact_top_pair?.tested_pairs ? `m=${ie2.fisher_exact_top_pair.tested_pairs}, BH` : null,
+        ie2.fisher_exact_top_pair ? ie2.fisher_exact_top_pair.fdr_significant !== true : undefined);
+    addTest('Gaps geométrico',
+        ie2.poisson_gaps && (ie2.poisson_gaps.geometric_gof_pvalue ?? ie2.poisson_gaps.mean_dispersion_pvalue));
     addTest('Pares ciegos bayesiano', v.blind_test && v.blind_test.bayesiano && v.blind_test.bayesiano.binom_pvalue_top10);
     addTest('Pares ciegos markov', v.blind_test && v.blind_test.markov && v.blind_test.markov.binom_pvalue_top10);
-    const mc = v.blind_test && v.blind_test.monte_carlo_baseline;
-    addTest('Monte Carlo vs azar', mc && mc.bayesiano_vs_mc_pvalue, 'modelos bajo el azar');
-    const passCount = tests.filter((t) => t.indexOf('pass') > -1).length;
     const totalTests = tests.length;
 
     const dashboardHtml = '<div class="model-card"><h4>🎱 Tablero de Predicciones y Certeza</h4>' +
@@ -1476,6 +1576,15 @@ function initializeVisualizer() {
     const periodSelect = document.getElementById('viz-period');
     const typeSelect = document.getElementById('viz-type');
     const refreshBtn = document.getElementById('viz-refresh');
+    if (!gameSelect || !periodSelect || !typeSelect || !refreshBtn) return;
+
+    // `loadData` puede re-ejecutarse desde el botón de reintento: sin esta
+    // guarda cada reintento añade otro juego de listeners.
+    if (refreshBtn.dataset.wired === '1') {
+        renderVisualizer();
+        return;
+    }
+    refreshBtn.dataset.wired = '1';
     
     const updateViz = utils.debounce(() => {
         state.filters.game = gameSelect.value;
@@ -1501,10 +1610,21 @@ function renderVisualizer() {
     
     // Filter by period
     if (period !== 'all') {
-        const daysAgo = parseInt(period);
+        const daysAgo = parseInt(period, 10);
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - daysAgo);
         data = data.filter(d => new Date(d.date) >= cutoff);
+    }
+
+    // Sin datos, d3.extent([]) es [undefined, undefined] y todas las escalas
+    // producen NaN (paths inválidos y ejes vacíos).
+    if (!data.length) {
+        container.append('p')
+            .attr('class', 'no-data')
+            .style('padding', '2rem')
+            .style('text-align', 'center')
+            .text('No hay sorteos en el período seleccionado.');
+        return;
     }
     
     const node = container.node();
@@ -1566,7 +1686,11 @@ function renderFrequencyViz(svg, data, width, height, margin) {
         .attr('rx', 3)
         .on('mouseover', function(event, d) {
             d3.select(this).attr('opacity', 0.8);
-            showTooltip(event, d, { count: freq[d], percentage: ((freq[d] / data.length) * 100).toFixed(1) });
+            showTooltip(event, `Número ${d}`, [
+                ['Apariciones', freq[d] || 0],
+                ['% de sorteos', `${((freq[d] || 0) / data.length * 100).toFixed(1)}%`],
+                ['Sorteos en el filtro', data.length]
+            ]);
         })
         .on('mouseout', function() {
             d3.select(this).attr('opacity', 1);
@@ -1640,11 +1764,11 @@ function renderTimelineViz(svg, data, width, height, margin) {
         .attr('fill', 'var(--accent-primary)')
         .on('mouseover', function(event, d) {
             d3.select(this).attr('r', 6).attr('fill', 'var(--accent-tertiary)');
-            showTooltip(event, d.date, { 
-                sum: d.numbers.reduce((a, b) => a + b, 0),
-                numbers: d.numbers.join(', '),
-                superbalota: d.superbalota
-            });
+            showTooltip(event, utils.formatDate(d.date), [
+                ['Suma', d.numbers.reduce((a, b) => a + b, 0)],
+                ['Números', d.numbers.join(', ')],
+                ['Superbalota', d.superbalota]
+            ]);
         })
         .on('mouseout', function() {
             d3.select(this).attr('r', 4).attr('fill', 'var(--accent-primary)');
@@ -1737,14 +1861,31 @@ function renderPatternsViz(svg, data, width, height, margin) {
 }
 
 function renderJackpotViz(svg, data, width, height, margin) {
-    const sortedData = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Solo el último sorteo trae jackpot del sitio oficial: sin al menos 2 puntos
+    // el dominio de la escala es NaN y el path sale con coordenadas inválidas.
+    const pts = [...data]
+        .filter(d => d.jackpot != null && Number.isFinite(Number(d.jackpot)))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (pts.length < 2) {
+        svg.append('text')
+            .attr('x', width / 2)
+            .attr('y', height / 2)
+            .attr('text-anchor', 'middle')
+            .attr('fill', 'var(--text-muted)')
+            .attr('font-size', '13px')
+            .text('El sitio oficial solo publica el acumulado del sorteo más reciente: no hay serie histórica de jackpots.');
+        return;
+    }
+
+    const sortedData = pts;
     
     const x = d3.scaleTime()
         .domain(d3.extent(sortedData, d => new Date(d.date)))
         .range([margin.left, width - margin.right]);
     
     const y = d3.scaleLinear()
-        .domain([0, d3.max(sortedData, d => d.jackpot) * 1.1])
+        .domain([0, d3.max(sortedData, d => Number(d.jackpot)) * 1.1])
         .nice()
         .range([height - margin.bottom, margin.top]);
     
@@ -1752,7 +1893,7 @@ function renderJackpotViz(svg, data, width, height, margin) {
     const area = d3.area()
         .x(d => x(new Date(d.date)))
         .y0(height - margin.bottom)
-        .y1(d => y(d.jackpot))
+        .y1(d => y(Number(d.jackpot)))
         .curve(d3.curveMonotoneX);
     
     svg.append('path')
@@ -1764,7 +1905,7 @@ function renderJackpotViz(svg, data, width, height, margin) {
     // Line
     const line = d3.line()
         .x(d => x(new Date(d.date)))
-        .y(d => y(d.jackpot))
+        .y(d => y(Number(d.jackpot)))
         .curve(d3.curveMonotoneX);
     
     svg.append('path')
@@ -1809,6 +1950,7 @@ function initializeTheme() {
     
     document.documentElement.setAttribute('data-theme', savedTheme);
     state.currentTheme = savedTheme;
+    if (!toggleBtn) return;
     
     toggleBtn.addEventListener('click', () => {
         const newTheme = state.currentTheme === 'dark' ? 'light' : 'dark';
@@ -1816,10 +1958,12 @@ function initializeTheme() {
         localStorage.setItem('theme', newTheme);
         state.currentTheme = newTheme;
         
-        // Update charts colors
-        Object.values(state.charts).forEach(chart => {
-            if (chart && chart.update) chart.update();
-        });
+        // Los colores de Chart.js son valores computados, no variables CSS:
+        // hay que re-aplicarlos antes del update o el tema no cambia.
+        applyChartTheme();
+        if (typeof d3 !== 'undefined') {
+            try { renderVisualizer(); } catch (e) { console.warn('re-render viz:', e); }
+        }
     });
 }
 
@@ -1829,10 +1973,11 @@ function initializeTheme() {
 function initializeMobileMenu() {
     const menuBtn = document.getElementById('mobile-menu-btn');
     const navLinks = document.querySelector('.nav-links');
+    if (!menuBtn || !navLinks) return;
     
     menuBtn.addEventListener('click', () => {
         const isOpen = navLinks.classList.toggle('open');
-        menuBtn.setAttribute('aria-expanded', isOpen);
+        menuBtn.setAttribute('aria-expanded', String(isOpen));
     });
     
     // Close on link click
@@ -1865,12 +2010,14 @@ function initializeMobileMenu() {
 // ==========================================================================
 function initializeParticles() {
     const canvas = document.getElementById('bg-canvas');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
     // A11y: respetar prefers-reduced-motion (dibujar un frame estático, sin bucle)
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
     let particles = [];
+    let frameId = null;
     const particleCount = 50;
     
     function resize() {
@@ -1929,12 +2076,23 @@ function initializeParticles() {
             }
         }
         
-        if (!reduceMotion) requestAnimationFrame(animate);
+        if (!reduceMotion) frameId = requestAnimationFrame(animate);
     }
     
     window.addEventListener('resize', () => {
         resize();
         createParticles();
+    });
+
+    // Pausa real del bucle (el navegador ya congela rAF en pestañas ocultas,
+    // pero eso no es una garantía del código).
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (frameId !== null) cancelAnimationFrame(frameId);
+            frameId = null;
+        } else if (!reduceMotion && frameId === null) {
+            frameId = requestAnimationFrame(animate);
+        }
     });
     
     resize();
@@ -1971,27 +2129,16 @@ async function initializeVisitCounter() {
     const counterEl = document.getElementById('visit-count');
     if (!counterEl) return;
     
+    // Contador local por navegador. Antes se llamaba a api.countapi.xyz, que ya
+    // no existe (DNS inexistente → error en consola en cada carga) y cuyo
+    // namespace era público y escribible: el número no significaba nada.
     try {
-        // Use a simple localStorage counter + API for display
         let count = parseInt(localStorage.getItem('baloto_oracle_visits') || '0', 10);
+        if (!Number.isFinite(count)) count = 0;
         count += 1;
-        localStorage.setItem('baloto_oracle_visits', count.toString());
-        
-        // Also try to fetch from a public counter API for cross-device count
-        try {
-            const response = await fetch('https://api.countapi.xyz/hit/baloto-oracle/visits', {
-                method: 'GET',
-                mode: 'cors'
-            });
-            if (response.ok) {
-                const data = await response.json();
-                count = data.value;
-            }
-        } catch {
-            // Fallback to local count
-        }
-        
+        localStorage.setItem('baloto_oracle_visits', String(count));
         counterEl.textContent = utils.formatNumber(count);
+        counterEl.title = 'Visitas en este navegador';
     } catch (error) {
         console.warn('Visit counter error:', error);
         counterEl.textContent = '—';
@@ -2071,10 +2218,23 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Handle visibility change to pause/resume particles
-document.addEventListener('visibilitychange', () => {
-    const canvas = document.getElementById('bg-canvas');
-    canvas.style.display = document.hidden ? 'none' : 'block';
-});
+// (la pausa real del bucle vive en initializeParticles)
+
+// Los SVG de d3 se dibujan a un ancho fijo: sin esto quedan cortados o con
+// hueco al redimensionar la ventana (Chart.js sí es responsive).
+window.addEventListener('resize', utils.debounce(() => {
+    if (typeof d3 === 'undefined' || !state.data.analysis) return;
+    try {
+        createFrequencyHeatmap();
+    } catch (e) {
+        console.warn('resize heatmap:', e);
+    }
+    try {
+        if (document.getElementById('interactive-viz')) renderVisualizer();
+    } catch (e) {
+        console.warn('resize visualizer:', e);
+    }
+}, 250));
 
 // Export for testing
 if (typeof module !== 'undefined' && module.exports) {

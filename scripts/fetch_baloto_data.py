@@ -9,9 +9,13 @@ oficial: https://www.baloto.com/resultados?page=1..125
 - NO genera datos sintéticos (se eliminó create_sample_data).
 - NO depende de Kaggle (se eliminó download_kaggle_dataset).
 - Cada página oficial contiene 10 filas: 5 sorteos Baloto + 5 Revancha.
-- La última página (125) llega hasta el 1 de Mayo de 2021.
+- El historial oficial arranca el 1 de Mayo de 2021 (~202 páginas). A partir de
+  ahí el sitio repite la última página, y el deduplicado corta la iteración.
 - El jackpot se obtiene de la página de detalle del sorteo más reciente
   (texto "ACUMULADO DEL SORTEO: $XX.XXX MILLONES"); el resto queda null.
+- El resultado se FUSIONA por fecha con el histórico ya almacenado: un scrape
+  parcial (red caída, HTML cambiado, tope de páginas) nunca puede borrar
+  sorteos anteriores.
 
 Salida:
   data/raw/baloto_historical.csv        (draw_id,date,numbers,superbalota,jackpot,game)
@@ -46,8 +50,9 @@ DATA_PROCESSED = BASE_DIR / "data" / "processed"
 
 OFFICIAL_RESULTS_URL = "https://www.baloto.com/resultados"
 OFFICIAL_DETAIL_URL = "https://www.baloto.com/resultados-baloto/{draw_id}"
-MAX_PAGES = 125
+MAX_PAGES = 400  # tope de seguridad; el fin real del historial lo da el dedup
 REQUEST_DELAY = 0.8  # segundos entre peticiones (cortesía)
+SCRAPE_DEADLINE = 15 * 60  # segundos; aborta antes de que el job de CI expire
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -82,10 +87,16 @@ def parse_spanish_date(text: str) -> str | None:
     if not m:
         return None
     day, month_name, year = m.groups()
-    month = SPANISH_MONTHS.get(month_name)
+    # El sitio publica "Agosto"; aceptar cualquier capitalización evita perder
+    # filas en silencio si cambia el formato.
+    month = SPANISH_MONTHS.get(month_name.capitalize())
     if month is None:
         return None
-    return f"{year}-{month:02d}-{int(day):02d}"
+    try:
+        # Valida el día real (rechaza "32 de Agosto").
+        return datetime(int(year), month, int(day)).strftime("%Y-%m-%d")
+    except ValueError:
+        return None
 
 
 def fetch_page(session: requests.Session, page: int) -> str | None:
@@ -191,8 +202,16 @@ def scrape_all(session: requests.Session) -> tuple[list[dict], list[dict]]:
     baloto: list[dict] = []
     revancha: list[dict] = []
     seen: set[tuple] = set()
+    started = time.monotonic()
 
     for page in range(1, MAX_PAGES + 1):
+        if time.monotonic() - started > SCRAPE_DEADLINE:
+            logger.warning(
+                "deadline de %ss alcanzado en page %s — se usa lo descargado",
+                SCRAPE_DEADLINE,
+                page,
+            )
+            break
         html = fetch_page(session, page)
         if html is None:
             logger.error("abortando en page %s (descarga fallida)", page)
@@ -220,9 +239,31 @@ def scrape_all(session: requests.Session) -> tuple[list[dict], list[dict]]:
     return baloto, revancha
 
 
+def load_existing(path: Path) -> list[dict]:
+    """Histórico ya almacenado (vacío si no existe o está corrupto)."""
+    if not path.exists():
+        return []
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("no se pudo leer %s (%s) — se reconstruye desde cero", path, exc)
+        return []
+
+
+def merge_draws(existing: list[dict], scraped: list[dict]) -> list[dict]:
+    """Unión por fecha: el scrape gana en conflicto, nada se pierde."""
+    by_date = {d["date"]: d for d in existing}
+    for d in scraped:
+        by_date[d["date"]] = d
+    return [by_date[k] for k in sorted(by_date)]
+
+
 def to_csv(draws: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8") as fh:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
         writer.writerow(
             ["draw_id", "date", "numbers", "superbalota", "jackpot", "game"]
@@ -238,12 +279,15 @@ def to_csv(draws: list[dict], path: Path) -> None:
                     d["game"],
                 ]
             )
+    tmp.replace(path)
 
 
 def to_json(draws: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(draws, fh, ensure_ascii=False)
+    tmp.replace(path)
 
 
 def write_metadata(
@@ -252,6 +296,9 @@ def write_metadata(
     start = min(d["date"] for d in baloto)
     end = max(d["date"] for d in baloto)
     metadata = {
+        # `data_date` es determinista (deriva del dato); `last_updated` cambia en
+        # cada corrida y NO debe usarse para detectar cambios.
+        "data_date": end,
         "last_updated": datetime.now(timezone.utc).isoformat(),
         "total_draws": len(baloto),
         "date_range": {"start": start, "end": end},
@@ -261,12 +308,14 @@ def write_metadata(
         "draw_time": "23:00 COT",
         "source": (
             "https://www.baloto.com/resultados (sitio oficial — scraping "
-            "paginado, páginas 1..125, sin datos sintéticos)"
+            "paginado hasta el fin del historial, sin datos sintéticos)"
         ),
         "current_jackpot": current_jackpot,
     }
-    with open(DATA_PROCESSED / "metadata.json", "w", encoding="utf-8") as fh:
+    tmp = DATA_PROCESSED / "metadata.json.tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(metadata, fh, ensure_ascii=False, indent=2)
+    tmp.replace(DATA_PROCESSED / "metadata.json")
     logger.info("metadata.json escrito: %s sorteos, %s → %s", len(baloto), start, end)
 
 
@@ -277,11 +326,28 @@ def run() -> None:
     session = requests.Session()
     session.headers.update(HEADERS)
 
+    prev_baloto = load_existing(DATA_PROCESSED / "baloto.json")
+    prev_revancha = load_existing(DATA_PROCESSED / "revancha.json")
+
     logger.info("Scraping oficial %s?page=1..%s", OFFICIAL_RESULTS_URL, MAX_PAGES)
     baloto, revancha = scrape_all(session)
 
     if not baloto:
-        logger.error("no se obtuvieron datos — abortando")
+        logger.error("no se obtuvieron datos — abortando sin tocar el histórico")
+        sys.exit(1)
+
+    # Un scrape incompleto NO puede reducir el histórico: se fusiona por fecha.
+    baloto = merge_draws(prev_baloto, baloto)
+    revancha = merge_draws(prev_revancha, revancha)
+
+    if len(baloto) < len(prev_baloto) or len(revancha) < len(prev_revancha):
+        logger.error(
+            "la fusión perdería sorteos (%s→%s, %s→%s) — abortando",
+            len(prev_baloto),
+            len(baloto),
+            len(prev_revancha),
+            len(revancha),
+        )
         sys.exit(1)
 
     # El sorteo más reciente es la primera fila de la página 1.
@@ -291,7 +357,7 @@ def run() -> None:
         latest_official_id = baloto_sorted[0].get("official_id")
         current_jackpot = fetch_current_jackpot(session, latest_official_id or 1)
 
-    # Asignar jackpot solo al sorteo más reciente; el resto queda null.
+    # Asignar jackpot solo al sorteo más reciente; el resto conserva el suyo.
     if current_jackpot is not None and baloto_sorted:
         baloto_sorted[0]["jackpot"] = current_jackpot
 
@@ -302,6 +368,10 @@ def run() -> None:
     # Orden cronológico ascendente (coherente con la versión previa y con data.js).
     baloto.sort(key=lambda d: d["date"])
     revancha.sort(key=lambda d: d["date"])
+
+    nuevos = len(baloto) - len(prev_baloto)
+    if nuevos > 0:
+        logger.info("+%s sorteos nuevos", nuevos)
 
     to_csv(baloto, DATA_RAW / "baloto_historical.csv")
     to_csv(revancha, DATA_RAW / "revancha_historical.csv")

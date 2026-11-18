@@ -1,4 +1,4 @@
-name: 🔧 CI Checks
+name: CI Checks
 
 on:
   push:
@@ -6,48 +6,63 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: read
+
 jobs:
   lint:
-    name: 🔍 Lint & Format Check
+    name: Lint & Format Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
+          cache: 'pip'
       - name: Install linting tools
         run: |
           pip install ruff black isort
       - name: Check Python formatting (Black)
-        run: |
-          black --check --diff scripts/
+        run: black --check --diff scripts/
       - name: Check import sorting (isort)
-        run: |
-          isort --check-only --diff scripts/
+        run: isort --check-only --diff scripts/
       - name: Lint with Ruff
-        run: |
-          ruff check scripts/
+        run: ruff check scripts/
 
   test:
-    name: 🧪 Run Tests
+    name: Run Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
+          cache: 'pip'
       - name: Install test dependencies
         run: |
-          pip install pytest pytest-cov
+          pip install pytest
           pip install -r requirements.txt
+      # Sin `|| echo`: un test rojo debe romper el build (antes el job no podía fallar).
       - name: Run tests
+        run: python -m pytest scripts/ -v
+
+  check-js:
+    name: Check JS Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax check
         run: |
-          python -m pytest scripts/ -v --cov=scripts --cov-report=term-missing || echo "No tests found, skipping"
+          node --check src/js/main.js
+          node --check src/js/data.js
 
   validate-html:
-    name: ✅ Validate HTML
+    name: Validate HTML
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,7 +72,7 @@ jobs:
           root: .
 
   check-links:
-    name: 🔗 Check Links
+    name: Check Links
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

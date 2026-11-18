@@ -4,21 +4,30 @@
 Baloto Oracle — Generador de src/js/data.js
 ===========================================
 Embebe data/processed (baloto.json, revancha.json, metadata.json,
-analysis_results.json) en window.BAL_DATA para que la web no dependa de fetch.
+analysis_results.json, validation_results.json) en window.BAL_DATA para que la
+web no dependa de fetch.
 
-Además corrige metadata.draw_days: los días de sorteo se DERIVAN de los datos
-reales (los sábados y miércoles cubren todo el período; los lunes solo desde
-2025-05), en lugar de asumir un calendario fijo.
+Además:
+- Corrige metadata.draw_days: los días de sorteo se DERIVAN de los datos reales
+  (los sábados y miércoles cubren todo el período; los lunes solo desde 2025-06),
+  en lugar de asumir un calendario fijo.
+- Escapa "</" en el JSON embebido: sin eso, un campo de texto con "</script>"
+  cerraría el tag y el resto se interpretaría como HTML.
+- Actualiza el cache-buster ?v= de index.html con la fecha del último sorteo, de
+  modo que un navegador con data.js cacheado no siga sirviendo datos viejos.
+- Falla si el validation_results.json no corresponde al dataset actual.
 """
 
 import json
+import re
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROCESSED = BASE_DIR / "data" / "processed"
 OUT = BASE_DIR / "src" / "js" / "data.js"
+INDEX = BASE_DIR / "index.html"
 
 WEEKDAY_NAMES = [
     "Monday",
@@ -34,6 +43,11 @@ WEEKDAY_NAMES = [
 def load(name: str):
     with open(PROCESSED / name, "r", encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def dumps_js(obj) -> str:
+    """JSON apto para un <script> clásico: escapa el cierre de tag."""
+    return json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
 
 
 def fix_draw_days(metadata: dict, baloto: list) -> dict:
@@ -53,6 +67,16 @@ def fix_draw_days(metadata: dict, baloto: list) -> dict:
     return metadata
 
 
+def update_cache_buster(version: str) -> None:
+    """?v= de los assets = fecha del último sorteo (determinista y significativo)."""
+    if not INDEX.exists():
+        return
+    html = INDEX.read_text(encoding="utf-8")
+    new_html = re.sub(r"(src/(?:js|css)/[\w.-]+)\?v=[\w.-]+", rf"\1?v={version}", html)
+    if new_html != html:
+        INDEX.write_text(new_html, encoding="utf-8")
+
+
 def main() -> None:
     baloto = load("baloto.json")
     revancha = load("revancha.json")
@@ -65,26 +89,44 @@ def main() -> None:
 
     fix_draw_days(metadata, baloto)
 
+    # El artefacto es determinista: la fecha sale del dato, no del reloj.
+    version = metadata["date_range"]["end"].replace("-", "")
+    metadata["data_date"] = metadata["date_range"]["end"]
+
+    # La validación debe corresponder al mismo dataset que el análisis.
+    if validation is not None:
+        v_draws = validation.get("data", {}).get("draws")
+        if v_draws is not None and v_draws != len(baloto):
+            raise SystemExit(
+                f"validation_results.json tiene {v_draws} sorteos y baloto.json "
+                f"{len(baloto)}: re-ejecuta scripts/validate_baloto.py"
+            )
+
     with open(PROCESSED / "metadata.json", "w", encoding="utf-8") as fh:
         json.dump(metadata, fh, ensure_ascii=False, indent=2)
 
     header = (
         "// Datos embebidos - generados desde data/processed para eliminar dependencia de fetch\n"
-        f"// Generado: {datetime.now(timezone.utc).isoformat()}\n"
+        f"// Generado para el sorteo del {metadata['data_date']}\n"
         "(function () {\n"
         "  window.BAL_DATA = {};\n"
     )
     body = (
-        f"  window.BAL_DATA.baloto = {json.dumps(baloto, ensure_ascii=False)};\n"
-        f"  window.BAL_DATA.revancha = {json.dumps(revancha, ensure_ascii=False)};\n"
-        f"  window.BAL_DATA.metadata = {json.dumps(metadata, ensure_ascii=False)};\n"
-        f"  window.BAL_DATA.analysis_results = {json.dumps(analysis, ensure_ascii=False)};\n"
+        f"  window.BAL_DATA.baloto = {dumps_js(baloto)};\n"
+        f"  window.BAL_DATA.revancha = {dumps_js(revancha)};\n"
+        f"  window.BAL_DATA.metadata = {dumps_js(metadata)};\n"
+        f"  window.BAL_DATA.analysis_results = {dumps_js(analysis)};\n"
     )
     if validation is not None:
-        body += f"  window.BAL_DATA.validation = {json.dumps(validation, ensure_ascii=False)};\n"
+        body += f"  window.BAL_DATA.validation = {dumps_js(validation)};\n"
     footer = "})();\n"
 
-    OUT.write_text(header + body + footer, encoding="utf-8")
+    tmp = OUT.with_suffix(".js.tmp")
+    tmp.write_text(header + body + footer, encoding="utf-8")
+    tmp.replace(OUT)
+
+    update_cache_buster(version)
+
     print(
         f"data.js escrito: {len(baloto)} baloto, {len(revancha)} revancha, "
         f"{OUT.stat().st_size} bytes | draw_days={metadata['draw_days']}"
@@ -92,6 +134,7 @@ def main() -> None:
     print(
         f"draw_day_ranges={json.dumps(metadata['draw_day_ranges'], ensure_ascii=False)}"
     )
+    print(f"cache-buster aplicado: ?v={version}")
 
 
 if __name__ == "__main__":

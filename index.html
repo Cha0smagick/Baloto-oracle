@@ -3,36 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- CSP por meta: GitHub Pages no permite headers HTTP. Debe ir ANTES de
+         los scripts de terceros, o la política no los cubre. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
     <meta name="description" content="Baloto Oracle - Análisis Estadístico Completo de la Lotería Baloto Colombia">
     <meta name="theme-color" content="#1a1a2e">
-    <title>Baloto Oracle | Análisis Estadístico y Predicciones</title>
+    <title>Baloto Oracle | Análisis Estadístico y Predictivo</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2.0.0/dist/chartjs-chart-matrix.min.js"></script>
+    <!-- Chart.js: versiones exactas + SRI. `defer` mantiene el orden de ejecución
+         y evita bloquear el render del <h1> mientras bajan ~480 KB. -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+            integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4"
+            crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2.0.0/dist/chartjs-chart-matrix.min.js"
+            integrity="sha384-rLCAVAfbrLvseIiOYG11kdvPRhCGoR+qUFh3gCSVmChOk0mRqvYAyDTRvxZMFrxZ"
+            crossorigin="anonymous"></script>
     <!-- Chart.js Annotation plugin: carga estática ANTES de crear cualquier chart.
          Si el plugin se registra después de que un chart ya existe, ese chart nunca recibe
          estado (beforeInit) y el primer redraw crashea en beforeDraw con
          "Cannot read properties of undefined (reading 'visibleElements')". -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"
+            integrity="sha384-3N9GHhCtN3CQef6tNfqgZlv7sQLYIkcChN+uaTZ7xVdzKYp/SjBNPxa92+hM7EAY"
+            crossorigin="anonymous"></script>
     
-    <!-- D3.js for advanced visualizations -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- D3.js: versión exacta desde jsDelivr (d3js.org servía el alias móvil d3.v7) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"
+            integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i"
+            crossorigin="anonymous"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="src/css/main.css?v=20260830">
+    <link rel="stylesheet" href="src/css/main.css?v=20261116">
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E%F0%9F%94%AE%3C%2Ftext%3E%3C%2Fsvg%3E">
 </head>
 <body>
+    <a href="#overview" class="skip-link">Saltar al contenido principal</a>
     <!-- Background Canvas for particle effect -->
-    <canvas id="bg-canvas"></canvas>
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
     
     <!-- Navigation -->
     <nav class="navbar" role="navigation" aria-label="Navegación principal">
@@ -43,10 +56,12 @@
             </a>
             <div class="nav-links">
                 <a href="#overview" class="nav-link" data-section="overview">Resumen</a>
-                <a href="#descriptive" class="nav-link" data-section="descriptive">Estadística Descriptiva</a>
-                <a href="#inferential" class="nav-link" data-section="inferential">Estadística Inferencial</a>
+                <a href="#descriptive" class="nav-link" data-section="descriptive">Descriptiva</a>
+                <a href="#inferential" class="nav-link" data-section="inferential">Inferencial</a>
                 <a href="#predictions" class="nav-link" data-section="predictions">Predicciones</a>
-                        <a href="#validation" class="nav-link" data-section="validation">Validación</a>
+                <a href="#predictive" class="nav-link" data-section="predictive">Modelos</a>
+                <a href="#validation" class="nav-link" data-section="validation">Validación</a>
+                <a href="#prediction-dashboard" class="nav-link" data-section="prediction-dashboard">Tablero</a>
                 <a href="#visualizer" class="nav-link" data-section="visualizer">Visualizador</a>
             </div>
             <div class="nav-controls">
@@ -124,7 +139,7 @@
         </div>
         <div class="hero-visual">
             <div id="hero-chart-container">
-                <canvas id="hero-chart"></canvas>
+                <canvas id="hero-chart" role="img" aria-label="Frecuencia histórica de los números 1 a 43 en todos los sorteos"></canvas>
             </div>
         </div>
     </header>
@@ -144,17 +159,9 @@
                     <div class="chart-card">
                         <div class="chart-header">
                             <h3>Mapa de Calor - Frecuencia de Números (1-43)</h3>
-                            <div class="chart-controls">
-                                <select id="freq-period" class="control-select">
-                                    <option value="all">Todo el historial</option>
-                                    <option value="50">Últimos 50 sorteos</option>
-                                    <option value="20">Últimos 20 sorteos</option>
-                                    <option value="10">Últimos 10 sorteos</option>
-                                </select>
-                            </div>
                         </div>
                         <div class="chart-wrapper">
-                            <div id="frequency-heatmap"></div>
+                            <div id="frequency-heatmap" role="img" aria-label="Mapa de calor de la frecuencia de los números 1 a 43 en todo el historial"></div>
                         </div>
                         <div class="chart-legend" id="freq-legend"></div>
                     </div>
@@ -165,7 +172,7 @@
                             <h3>Frecuencia Superbalota (1-16)</h3>
                         </div>
                         <div class="chart-wrapper">
-                            <canvas id="superbalota-chart"></canvas>
+                            <canvas id="superbalota-chart" role="img" aria-label="Conteo de apariciones de cada Superbalota, del 1 al 16"></canvas>
                         </div>
                     </div>
                 </div>
@@ -177,7 +184,7 @@
                             <h3>Análisis por Posición (1ª a 5ª bola)</h3>
                         </div>
                         <div class="chart-wrapper">
-                            <canvas id="position-chart"></canvas>
+                            <canvas id="position-chart" role="img" aria-label="Frecuencia de cada número según la posición, de la primera a la quinta balota"></canvas>
                         </div>
                     </div>
                 </div>
@@ -189,7 +196,7 @@
                             <h3>Distribución de Sumas</h3>
                         </div>
                         <div class="chart-wrapper">
-                            <canvas id="sum-chart"></canvas>
+                            <canvas id="sum-chart" role="img" aria-label="Distribución de la suma de las cinco balotas de cada sorteo"></canvas>
                         </div>
                         <div class="stat-summary" id="sum-stats"></div>
                     </div>
@@ -198,7 +205,7 @@
                             <h3>Balance Par/Impar</h3>
                         </div>
                         <div class="chart-wrapper">
-                            <canvas id="oddeven-chart"></canvas>
+                            <canvas id="oddeven-chart" role="img" aria-label="Distribución del balance entre números pares e impares"></canvas>
                         </div>
                     </div>
                     <div class="chart-card">
@@ -206,7 +213,7 @@
                             <h3>Balance Alto/Bajo</h3>
                         </div>
                         <div class="chart-wrapper">
-                            <canvas id="highlow-chart"></canvas>
+                            <canvas id="highlow-chart" role="img" aria-label="Distribución del balance entre números altos y bajos"></canvas>
                         </div>
                     </div>
                 </div>
@@ -218,7 +225,7 @@
                             <h3>Números Consecutivos</h3>
                         </div>
                         <div class="chart-wrapper">
-                            <canvas id="consecutive-chart"></canvas>
+                            <canvas id="consecutive-chart" role="img" aria-label="Cantidad de pares de números consecutivos por sorteo"></canvas>
                         </div>
                     </div>
                     <div class="chart-card">
@@ -226,7 +233,7 @@
                             <h3>Gaps entre Números</h3>
                         </div>
                         <div class="chart-wrapper">
-                            <canvas id="gaps-chart"></canvas>
+                            <canvas id="gaps-chart" role="img" aria-label="Distribución de las diferencias entre balotas adyacentes"></canvas>
                         </div>
                     </div>
                 </div>
@@ -237,7 +244,7 @@
                         <h3>Comparativa Baloto vs Revancha</h3>
                     </div>
                     <div class="chart-wrapper">
-                        <canvas id="comparison-chart"></canvas>
+                        <canvas id="comparison-chart" role="img" aria-label="Comparativa de frecuencias entre Baloto y Revancha"></canvas>
                     </div>
                 </div>
             </div>
@@ -411,7 +418,7 @@
                         <h3>Distribución Completa de Probabilidades</h3>
                     </div>
                     <div class="chart-wrapper">
-                        <canvas id="probability-chart"></canvas>
+                        <canvas id="probability-chart" role="img" aria-label="Probabilidad estimada por número para el próximo sorteo"></canvas>
                     </div>
                 </div>
                 
@@ -510,13 +517,14 @@
                     </div>
                     <div class="table-wrapper">
                         <table id="latest-draws-table" class="data-table">
+                            <caption class="sr-only">Últimos 20 sorteos con fecha, juego, números, superbalota y jackpot</caption>
                             <thead>
                                 <tr>
-                                    <th>Fecha</th>
-                                    <th>Juego</th>
-                                    <th>Números</th>
-                                    <th>Superbalota</th>
-                                    <th>Jackpot</th>
+                                    <th scope="col">Fecha</th>
+                                    <th scope="col">Juego</th>
+                                    <th scope="col">Números</th>
+                                    <th scope="col">Superbalota</th>
+                                    <th scope="col">Jackpot</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -595,7 +603,7 @@
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
     
     <!-- Scripts -->
-    <script src="src/js/data.js?v=20260827"></script>
-    <script type="module" src="src/js/main.js?v=20260827"></script>
+    <script src="src/js/data.js?v=20261116"></script>
+    <script type="module" src="src/js/main.js?v=20261116"></script>
 </body>
 </html>

@@ -45,7 +45,7 @@ DRAWS_PER_GAME = 5
 RANDOM_SEED = 42
 TEST_WINDOW = 150  # últimos N sorteos como ventana de prueba (pares ciegos)
 LOOKBACK = 50  # recencia para el modelo bayesiano
-MONTE_CARLO_SIMS = 2000
+MONTE_CARLO_SIMS = 500  # réplicas de la nula para KS/CvM (bloque 4.0)
 
 
 def _sanitize_json(obj):
@@ -67,6 +67,24 @@ def _p_label(p):
     return f"{p:.4f}"
 
 
+def _fdr_bh(p_values, alpha=0.05):
+    """Benjamini-Hochberg con monotonicidad (prefijo hasta el mayor i que pasa)."""
+    p = np.asarray(p_values, dtype=float)
+    n = len(p)
+    if n == 0:
+        return []
+    order = np.argsort(p)
+    ranked = p[order]
+    thresholds = (np.arange(1, n + 1) / n) * alpha
+    passing = np.where(ranked <= thresholds)[0]
+    reject = np.zeros(n, dtype=bool)
+    if passing.size:
+        reject[: passing.max() + 1] = True
+    out = np.zeros(n, dtype=bool)
+    out[order] = reject
+    return out.tolist()
+
+
 # ---------------------------------------------------------------------------
 # Carga de datos
 # ---------------------------------------------------------------------------
@@ -82,40 +100,50 @@ def load_draws():
 # 1. PRUEBA DE PARES CIEGOS (walk-forward)
 # ---------------------------------------------------------------------------
 def _bayesian_top(draws, idx, k=10):
-    """Top-k números según Beta-Binomial (prior=frecuencia global hasta idx,
-    likelihood=recencia con lookback). Réplica del modelo de la web."""
-    counts_global = Counter()
+    """Top-k números según Beta-Binomial (prior=frecuencia global previa a la
+    ventana, likelihood=ventana reciente). Prior y likelihood NO se solapan:
+    sumar la recencia al prior y restarla del beta la cuenta dos veces."""
+    counts_prior = Counter()
     counts_recent = Counter()
     start_recent = max(0, idx - LOOKBACK)
     for j in range(idx):
         for n in draws[j]["numbers"]:
-            counts_global[n] += 1
             if j >= start_recent:
                 counts_recent[n] += 1
-    total = idx * DRAWS_PER_GAME
+            else:
+                counts_prior[n] += 1
+    total_prior = start_recent * DRAWS_PER_GAME
+    total_recent = (idx - start_recent) * DRAWS_PER_GAME
     probs = {}
     for n in range(1, N_BALLS + 1):
-        gc = counts_global.get(n, 0)
+        pc = counts_prior.get(n, 0)
         rc = counts_recent.get(n, 0)
-        alpha = gc + rc + 1
-        beta = (total - gc - rc) + 1
+        alpha = pc + 1 + rc
+        beta = (total_prior - pc) + 1 + (total_recent - rc)
         probs[n] = alpha / (alpha + beta)
     ranked = sorted(probs.items(), key=lambda kv: kv[1], reverse=True)
     return [n for n, _ in ranked[:k]]
 
 
 def _markov_top(draws, idx, k=10):
-    """Cadena de Markov orden 1: transiciones entre sorteos consecutivos."""
+    """Cadena de Markov orden 1: P(n | último sorteo) normalizado por fila.
+
+    Rankear por conteos crudos reproduce la frecuencia marginal (las filas de
+    números frecuentes tienen conteos mayores en todas las columnas); hay que
+    normalizar cada fila por su total antes de agregar."""
     trans = Counter()
     for j in range(1, idx):
         for a in draws[j - 1]["numbers"]:
             for b in draws[j]["numbers"]:
                 trans[(a, b)] += 1
     last = draws[idx - 1]["numbers"]
-    scores = {}
-    for n in range(1, N_BALLS + 1):
-        s = sum(trans.get((a, n), 0) for a in last)
-        scores[n] = s
+    scores = {n: 0.0 for n in range(1, N_BALLS + 1)}
+    for a in last:
+        total = sum(trans.get((a, b), 0) for b in range(1, N_BALLS + 1))
+        if total == 0:
+            continue
+        for b in range(1, N_BALLS + 1):
+            scores[b] += trans.get((a, b), 0) / total
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
     return [n for n, _ in ranked[:k]]
 
@@ -164,37 +192,10 @@ def blind_test_walk_forward(draws):
             "exceeds_chance_top10": bool(pv10 < 0.05),
         }
 
-    # Línea base Monte Carlo: 5 números aleatorios vs top-10 bayesiano por sorteo
-    rng = np.random.default_rng(RANDOM_SEED)
-    mc_hits = []
-    top10s = [set(_bayesian_top(draws, i, k=10)) for i in range(start, n)]
-    for _ in range(MONTE_CARLO_SIMS):
-        s = 0
-        for i, top in enumerate(top10s):
-            rand5 = set(
-                rng.choice(np.arange(1, N_BALLS + 1), size=5, replace=False).tolist()
-            )
-            s += len(rand5 & top)
-        mc_hits.append(s / len(test_draws))
-    mc_mean = float(np.mean(mc_hits))
-    mc_std = float(np.std(mc_hits))
-    bayes_mean = results["bayesiano"]["mean_hits_top10"]
-    z = (
-        (bayes_mean - mc_mean) / (mc_std / math.sqrt(len(test_draws)))
-        if mc_std > 0
-        else 0.0
-    )
-    from scipy.stats import norm
-
-    z_pvalue = float(2 * (1 - norm.cdf(abs(z))))  # dos colas
-
-    results["monte_carlo_baseline"] = {
-        "simulations": MONTE_CARLO_SIMS,
-        "mean_hits_top10": round(mc_mean, 4),
-        "std_hits_top10": round(mc_std, 4),
-        "bayesiano_vs_mc_zscore": round(z, 3),
-        "bayesiano_vs_mc_pvalue": _p_label(z_pvalue),
-    }
+    # Línea base Monte Carlo eliminada: comparaba |aleatorio ∩ top10| contra
+    # |real ∩ top10|, dos cantidades con la MISMA esperanza (5·10/43), así que
+    # no podía detectar nada por diseño. El binomial exacto de arriba ya
+    # responde la pregunta con la nula correcta.
 
     exceeds = any(
         r["exceeds_chance_top10"]
@@ -354,43 +355,49 @@ def unsupervised_validation(draws):
 
     # Correlaciones de co-ocurrencia de pares
     cooc = np.zeros((N_BALLS, N_BALLS), dtype=int)
+    appearances = np.zeros(N_BALLS, dtype=int)
     for d in draws:
         nums = d["numbers"]
+        for x in nums:
+            appearances[x - 1] += 1
         for i in range(len(nums)):
             for j in range(i + 1, len(nums)):
                 a, b = nums[i] - 1, nums[j] - 1
                 cooc[a, b] += 1
                 cooc[b, a] += 1
+    # Tabla 2×2 con APARICIONES por número. cooc[a].sum() cuenta pares (es
+    # simétrica: vale 4·count(a)), así que usarla como marginal inflaba las
+    # celdas de discordancia ×4 y fabricaba p-valores de 1e-79.
+    p_both = (DRAWS_PER_GAME / N_BALLS) * (DRAWS_PER_GAME - 1) / (N_BALLS - 1)
     pairs = []
     for a in range(N_BALLS):
         for b in range(a + 1, N_BALLS):
-            both = cooc[a, b]
-            only_a = cooc[a].sum() - both
-            only_b = cooc[b].sum() - both
-            neither = n - both - only_a - only_b
+            both = int(cooc[a, b])
+            only_a = int(appearances[a] - both)
+            only_b = int(appearances[b] - both)
+            neither = int(n - both - only_a - only_b)
             table = np.array([[both, only_a], [only_b, neither]])
-            if table.min() < 5:
-                continue
             try:
                 from scipy.stats import chi2_contingency
 
                 chi2, pv, _, _ = chi2_contingency(table)
-                obs = both / n
-                exp = (cooc[a].sum() / n) * (cooc[b].sum() / n)
                 pairs.append(
-                    (a + 1, b + 1, round(obs, 4), round(exp, 4), round(chi2, 3), pv)
+                    (
+                        a + 1,
+                        b + 1,
+                        round(both / n, 4),
+                        round(p_both, 4),
+                        round(chi2, 3),
+                        pv,
+                    )
                 )
             except Exception:
                 continue
-    # FDR Benjamini-Hochberg sobre los p-values
+    # FDR Benjamini-Hochberg sobre TODOS los pares (no solo los que sobreviven
+    # a un filtro de celda, que sesga m a la baja)
     if pairs:
         pvals = np.array([p[5] for p in pairs])
-        m = len(pvals)
-        order = np.argsort(pvals)
-        ranked = pvals[order]
-        thresh = np.array([0.05 * (i + 1) / m for i in range(m)])
-        sig = ranked <= thresh
-        keep = set(order[sig].tolist()) if sig.any() else set()
+        keep = set(i for i, rej in enumerate(_fdr_bh(pvals.tolist())) if rej)
         top_pairs = [
             {
                 "pair": f"{a}-{b}",
@@ -402,6 +409,7 @@ def unsupervised_validation(draws):
             }
             for idx, (a, b, o, e, c, p) in enumerate(pairs)
         ]
+        top_pairs.sort(key=lambda x: float(x["pvalue"]))
         top_pairs = top_pairs[:5]
     else:
         top_pairs = []
@@ -415,7 +423,7 @@ def unsupervised_validation(draws):
         "kmeans": {
             "silhouette_by_k": sil,
             "inertia_by_k": {str(k): round(v, 2) for k, v in inertias.items()},
-            "interpretation": "Silhouette ~0 indica clusters no separables (sorteos intercambiables).",
+            "interpretation": "Silhouette < 0.25 sin máximo claro indica clusters no separables (sorteos intercambiables).",
         },
         "pair_cooccurrence": {
             "tested_pairs": len(pairs),
@@ -423,13 +431,16 @@ def unsupervised_validation(draws):
             "interpretation": "Co-ocurrencias observadas ~ esperadas bajo independencia y sin significancia FDR → sin asociación entre números.",
         },
     }
-    mean_sil = float(np.mean(list(sil.values()))) if sil else None
+    max_sil = float(max(sil.values())) if sil else None
+    # Silhouette < 0.25 en k-means sobre rasgos continuos es el valor típico de
+    # una nube sin clusters separables; exigir 0.15 declaraba "estructura" donde
+    # no la hay.
     results["conclusion"] = (
         "Sin estructura latente detectable: PCA sin componente dominante, "
-        "silhouette ≈ 0 y pares sin asociación significativa."
+        "silhouette bajo y sin máximo claro, y pares sin asociación tras FDR."
         if (
-            mean_sil is not None
-            and abs(mean_sil) < 0.15
+            max_sil is not None
+            and max_sil < 0.25
             and not any(p["fdr_significant"] for p in top_pairs)
         )
         else "Posible estructura débil: revisar PCA/KMeans/correlaciones en detalle."
@@ -442,7 +453,7 @@ def unsupervised_validation(draws):
 # ---------------------------------------------------------------------------
 def inferential_exact(draws):
     """Tests exactos y de aleatoriedad adicionales a analyze_baloto.py."""
-    from scipy.stats import cramervonmises, f_oneway, fisher_exact, kstest
+    from scipy.stats import fisher_exact
     from statsmodels.stats.diagnostic import acorr_ljungbox
 
     n = len(draws)
@@ -451,22 +462,54 @@ def inferential_exact(draws):
 
     out = {}
 
-    # 4.1 Kolmogorov-Smirnov (uniformidad global)
-    ks_stat, ks_p = kstest(transformed, "uniform")
+    # 4.0 Nula por simulación para KS y CvM.
+    #     Las 3110 balotas son 622 grupos de 5 SIN reemplazo (no iid) y la
+    #     distribución es discreta con 43 átomos, así que los p asintóticos no
+    #     son p-valores. Se calibra contra sorteos uniformes simulados.
+    def _ks_stat(u_sorted):
+        m = len(u_sorted)
+        i = np.arange(1, m + 1)
+        return float(max(np.max(i / m - u_sorted), np.max(u_sorted - (i - 1) / m)))
+
+    def _cvm_stat(u_sorted):
+        m = len(u_sorted)
+        i = np.arange(1, m + 1)
+        return float(1 / (12 * m) + np.sum((u_sorted - (2 * i - 1) / (2 * m)) ** 2))
+
+    def _null_stats(reps=MONTE_CARLO_SIMS):
+        rng = np.random.default_rng(RANDOM_SEED)
+        ks_null, cvm_null = [], []
+        for _ in range(reps):
+            # 5-subconjunto uniforme por sorteo: argsort de n×43 aleatorios
+            sim = (
+                np.argsort(rng.random((n, N_BALLS)), axis=1)[:, :DRAWS_PER_GAME] + 1
+            ).ravel()
+            u = np.sort((sim - 0.5) / N_BALLS)
+            ks_null.append(_ks_stat(u))
+            cvm_null.append(_cvm_stat(u))
+        return np.array(ks_null), np.array(cvm_null)
+
+    ks_null, cvm_null = _null_stats()
+    u_obs = np.sort(transformed)
+    ks_obs = _ks_stat(u_obs)
+    cvm_obs = _cvm_stat(u_obs)
+
+    # 4.1 Kolmogorov-Smirnov (uniformidad global, p calibrado por simulación)
+    ks_p = float((np.sum(ks_null >= ks_obs) + 1) / (len(ks_null) + 1))
     out["kolmogorov_smirnov_uniformity"] = {
-        "statistic": round(float(ks_stat), 4),
+        "statistic": round(ks_obs, 4),
         "pvalue": _p_label(ks_p),
+        "null_simulations": len(ks_null),
+        "note": "p calibrado por Monte Carlo: la nula replica el muestreo 5-de-43 sin reemplazo.",
     }
 
-    # 4.2 Cramér-von Mises (uniformidad)
-    try:
-        cvm = cramervonmises(transformed, "uniform")
-        out["cramer_von_mises"] = {
-            "statistic": round(float(cvm.statistic), 4),
-            "pvalue": _p_label(cvm.pvalue),
-        }
-    except Exception:
-        out["cramer_von_mises"] = None
+    # 4.2 Cramér-von Mises (uniformidad, misma calibración)
+    cvm_p = float((np.sum(cvm_null >= cvm_obs) + 1) / (len(cvm_null) + 1))
+    out["cramer_von_mises"] = {
+        "statistic": round(cvm_obs, 4),
+        "pvalue": _p_label(cvm_p),
+        "null_simulations": len(cvm_null),
+    }
 
     # 4.3 Runs test de Wald-Wolfowitz (par/impar y alto/bajo)
     parity = np.array(
@@ -513,41 +556,54 @@ def inferential_exact(draws):
         for lag in [1, 5, 10, 20]
     }
 
-    # 4.5 ANOVA de una vía (medias por posición 1..5)
-    positions = [
-        np.array([d["numbers"][i] for d in draws], dtype=float) for i in range(5)
-    ]
-    f_stat, f_p = f_oneway(*positions)
-    out["anova_positions"] = {
-        "f_statistic": round(float(f_stat), 3),
-        "pvalue": _p_label(f_p),
-        "means": [round(float(p.mean()), 3) for p in positions],
-    }
+    # 4.5 ANOVA de posiciones ELIMINADO: las 5 posiciones de un sorteo ya
+    #     ordenado no son muestras independientes (pos1 < pos2 < … < pos5 por
+    #     construcción), así que la nula "las medias son iguales" es falsa con
+    #     probabilidad 1. El test válido vive en analyze_baloto.py
+    #     (test_position_uniformity, contra el orden estadístico exacto).
 
-    # 4.6 Fisher exacto sobre el par más correlacionado (usar pares del bloque 3
-    #     no está disponible aquí → par de mayor co-ocurrencia simple)
+    # 4.6 Fisher exacto sobre el par MÁS fuerte de los 903, con p ajustado por BH
+    #     (el p de un máximo seleccionado no es un p-valor sin corregir)
     cooc = Counter()
+    appearances = Counter()
     for d in draws:
         nums = d["numbers"]
+        for x in nums:
+            appearances[x] += 1
         for i in range(len(nums)):
             for j in range(i + 1, len(nums)):
                 a, b = (nums[i], nums[j]) if nums[i] < nums[j] else (nums[j], nums[i])
                 cooc[(a, b)] += 1
-    top_pair, both = cooc.most_common(1)[0]
-    a, b = top_pair
-    only_a = sum(1 for d in draws if a in d["numbers"] and b not in d["numbers"])
-    only_b = sum(1 for d in draws if b in d["numbers"] and a not in d["numbers"])
-    neither = n - both - only_a - only_b
-    table = np.array([[both, only_a], [only_b, neither]])
-    odds, fisher_p = fisher_exact(table, alternative="two-sided")
-    out["fisher_exact_top_pair"] = {
-        "pair": f"{a}-{b}",
-        "cooccurrences": int(both),
-        "odds_ratio": round(float(odds), 3),
-        "pvalue": _p_label(fisher_p),
-    }
+    pair_pvalues = []
+    pair_tables = {}
+    for (a, b), both in cooc.items():
+        only_a = appearances[a] - both
+        only_b = appearances[b] - both
+        neither = n - both - only_a - only_b
+        table = np.array([[both, only_a], [only_b, neither]])
+        try:
+            _, fp = fisher_exact(table, alternative="two-sided")
+        except Exception:
+            continue
+        pair_pvalues.append(((a, b), float(fp)))
+        pair_tables[(a, b)] = table
+    if pair_pvalues:
+        reject = _fdr_bh([p for _, p in pair_pvalues])
+        best_idx = int(np.argmin([p for _, p in pair_pvalues]))
+        (a, b), best_p = pair_pvalues[best_idx]
+        table = pair_tables[(a, b)]
+        odds, _ = fisher_exact(table, alternative="two-sided")
+        out["fisher_exact_top_pair"] = {
+            "pair": f"{a}-{b}",
+            "cooccurrences": int(cooc[(a, b)]),
+            "odds_ratio": round(float(odds), 3),
+            "pvalue": _p_label(best_p),
+            "fdr_significant": bool(reject[best_idx]),
+            "tested_pairs": len(pair_pvalues),
+            "note": "Par más fuerte de 903, con p bruto y supervivencia a BH sobre 903.",
+        }
 
-    # 4.7 Poisson — dispersión de gaps entre apariciones de cada número
+    # 4.7 Gaps entre apariciones: GOF contra la distribución geométrica
     last_idx = {x: None for x in range(1, N_BALLS + 1)}
     gaps_by_num = {x: [] for x in range(1, N_BALLS + 1)}
     for i, d in enumerate(draws):
@@ -557,33 +613,53 @@ def inferential_exact(draws):
             last_idx[x] = i
     gap_means = []
     gap_vars = []
-    disp_pvals = []
+    pooled_gaps = []
     for x in range(1, N_BALLS + 1):
         g = np.array(gaps_by_num[x], dtype=float)
         if len(g) < 10:
             continue
-        mu = g.mean()
-        var = g.var(ddof=1)
-        gap_means.append(mu)
-        gap_vars.append(var)
-        # Los gaps de apariciones independientes (Bernoulli por sorteo) son GEOMÉTRICOS,
-        # no Poisson: E[gap]=1/p, Var[gap]=(1-p)/p² con p=5/43. Comparamos la varianza
-        # empírica contra la varianza geométrica teórica: ratio≈1 ⇒ independencia.
-        from scipy.stats import chi2
+        gap_means.append(g.mean())
+        gap_vars.append(g.var(ddof=1))
+        pooled_gaps.extend(g.tolist())
 
-        df = len(g) - 1
-        p_geom = DRAWS_PER_GAME / N_BALLS
-        geom_var = (1 - p_geom) / (p_geom**2) if p_geom > 0 else float("nan")
-        d = df * var / geom_var if geom_var > 0 else float("nan")
-        disp_pvals.append(1 - chi2.cdf(d, df))
+    # Bins con esperado ≥ 5 contra la geométrica P(gap=k) = p·(1-p)^(k-1).
+    # El cociente df·S²/σ² contra chi2 solo vale para datos normales: con gaps
+    # geométricos (discretos y muy asimétricos) ese p no era un p.
+    from scipy.stats import chisquare
+
+    p_geom = DRAWS_PER_GAME / N_BALLS
+    bin_edges = [1, 2, 3, 4, 5, 7, 10, 15, 10**6]
+    obs_bins, exp_bins = [], []
+    total_gaps = len(pooled_gaps)
+    for lo, hi in zip(bin_edges, bin_edges[1:]):
+        o = sum(1 for g in pooled_gaps if lo <= g < hi)
+        # P(lo <= G < hi) con G geométrica
+        e = total_gaps * (
+            (1 - p_geom) ** (lo - 1) - ((1 - p_geom) ** (hi - 1) if hi < 10**6 else 0)
+        )
+        if e >= 5 or (obs_bins and e > 0):
+            if obs_bins and e < 5:
+                obs_bins[-1] += o
+                exp_bins[-1] += e
+            else:
+                obs_bins.append(o)
+                exp_bins.append(e)
+    try:
+        gof_chi2, gof_p = chisquare(obs_bins, exp_bins)
+        gof_chi2, gof_p = float(gof_chi2), float(gof_p)
+    except Exception:
+        gof_chi2, gof_p = None, None
+
     out["poisson_gaps"] = {
         "mean_gap_mean": round(float(np.mean(gap_means)), 2),
         "mean_gap_variance": round(float(np.mean(gap_vars)), 2),
-        "theoretical_geometric_variance": round(
-            float((1 - DRAWS_PER_GAME / N_BALLS) / ((DRAWS_PER_GAME / N_BALLS) ** 2)), 2
+        "theoretical_geometric_variance": round(float((1 - p_geom) / (p_geom**2)), 2),
+        "geometric_gof_chi2": round(gof_chi2, 3) if gof_chi2 is not None else None,
+        "geometric_gof_pvalue": _p_label(gof_p) if gof_p is not None else None,
+        "note": (
+            "GOF chi-cuadrado de los gaps agrupados contra la geométrica con "
+            "p=5/43 (apariciones independientes por sorteo)."
         ),
-        "mean_dispersion_pvalue": _p_label(float(np.mean(disp_pvals))),
-        "note": "Si varianza ≈ varianza geométrica teórica (1-p)/p² y p alto, los gaps siguen la distribución geométrica esperada para apariciones independientes (Bernoulli por sorteo).",
     }
 
     # 4.8 Entropía de Shannon de las frecuencias
@@ -599,9 +675,39 @@ def inferential_exact(draws):
         "note": "Ratio ≈ 1 → frecuencias casi uniformes (máxima incertidumbre, sin favoritos).",
     }
 
+    # 4.9 Conclusión DERIVADA de los resultados (no un literal que puede
+    #     contradecir los números del mismo informe)
+    def _pnum(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    rechazos = []
+    for key, val in out.items():
+        if not isinstance(val, dict):
+            continue
+        if key == "fisher_exact_top_pair":
+            # El p del par MÁS fuerte de 903 no es interpretable sin la corrección
+            continue
+        pv = _pnum(val.get("pvalue"))
+        if pv is not None and pv < 0.05:
+            rechazos.append(f"{key} (p={pv:.4g})")
+    fisher = out.get("fisher_exact_top_pair")
+    if isinstance(fisher, dict) and fisher.get("fdr_significant"):
+        rechazos.append(
+            f"fisher_exact_top_pair {fisher['pair']} (p={fisher['pvalue']}, sobrevive BH)"
+        )
+    for lag_key, val in out.get("ljung_box_sum_series", {}).items():
+        pv = _pnum(val.get("pvalue"))
+        if pv is not None and pv < 0.05:
+            rechazos.append(f"ljung_box_sum_series.{lag_key} (p={pv:.4g})")
+
     out["conclusion"] = (
-        "Todos los tests de aleatoriedad/uniformidad/independencia son "
-        "consistentes con sorteos uniformes e independientes."
+        "Ningún test de aleatoriedad/uniformidad/independencia rechaza al 5%: "
+        "los sorteos son compatibles con uniformes e independientes."
+        if not rechazos
+        else f"{len(rechazos)} test(s) rechazan al 5%: " + ", ".join(rechazos)
     )
     return out
 
@@ -639,7 +745,7 @@ def run_validation():
             "blind_test": "Walk-forward out-of-sample: entrenar solo con sorteos anteriores y comparar top-10/top-5 contra el resultado real; contraste con Monte Carlo y test binomial exacto.",
             "supervised": "Random Forest y Regresión Logística por número (1..43) con split walk-forward; AUC vs 0.5 y lift vs 5/43.",
             "unsupervised": "PCA (varianza explicada), K-Means (silhouette) y chi2 de co-ocurrencia de pares con FDR.",
-            "inferential_exact": "Fisher, KS, Cramér-von Mises, runs de Wald-Wolfowitz, Ljung-Box, ANOVA de una vía, Poisson (gaps) y entropía de Shannon.",
+            "inferential_exact": "Fisher (con FDR), KS, Cramér-von Mises, runs de Wald-Wolfowitz, Ljung-Box, GOF geométrico de gaps y entropía de Shannon.",
         },
         "blind_test": blind,
         "supervised": supervised,
@@ -665,11 +771,12 @@ def run_validation():
             f"  {k:10s} aciertos/sorteo={r['mean_hits_top10']:.3f} (azar={r['expected_hits_top10_random']:.3f}) "
             f"binomial p={r['binom_pvalue_top10']}"
         )
-    mc = bt["monte_carlo_baseline"]
-    print(
-        f"  MonteCarlo   aciertos/sorteo={mc['mean_hits_top10']:.3f} ± {mc['std_hits_top10']:.3f} "
-        f"(z={mc['bayesiano_vs_mc_zscore']}, p={mc['bayesiano_vs_mc_pvalue']})"
-    )
+    mc = bt.get("monte_carlo_baseline")
+    if mc:
+        print(
+            f"  MonteCarlo   aciertos/sorteo={mc['mean_hits_top10']:.3f} ± {mc['std_hits_top10']:.3f} "
+            f"(z={mc['bayesiano_vs_mc_zscore']}, p={mc['bayesiano_vs_mc_pvalue']})"
+        )
     print(f"  -> {bt['conclusion']}")
 
     sp = results["supervised"]
@@ -690,7 +797,8 @@ def run_validation():
     print(
         f"\n— Inferencial exacto: KS p={ie['kolmogorov_smirnov_uniformity']['pvalue']}, "
         f"CvM p={ie['cramer_von_mises']['pvalue'] if ie['cramer_von_mises'] else 'n/a'}, "
-        f"ANOVA p={ie['anova_positions']['pvalue']}, "
+        f"Fisher p={ie['fisher_exact_top_pair']['pvalue']}, "
+        f"gaps GOF p={ie['poisson_gaps']['geometric_gof_pvalue']}, "
         f"entropía={ie['shannon_entropy']['ratio']}"
     )
     print(f"  -> {ie['conclusion']}")

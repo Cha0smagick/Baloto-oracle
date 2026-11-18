@@ -29,23 +29,24 @@ Un oráculo interactivo para la lotería **Baloto Colombia** que aplica estadís
 ### 🔬 Estadística Inferencial Completa
 
 #### Pruebas Paramétricas
-- **Chi-cuadrado bondad de ajuste** — H₀: distribución uniforme de números
-- **Test Ljung-Box** — H₀: independencia entre sorteos (autocorrelación lags 1-10)
-- **Test binomial exacto** — Significancia individual de números calientes/fríos
-- **Corrección Bonferroni** — α = 0.05/43 ≈ 0.00116 para comparaciones múltiples
-- **Intervalos de confianza 95%** — Wald (proporciones) y t-Student (medias)
-- **Normalidad** — Shapiro-Wilk y Anderson-Darling para sumas de sorteos
+- **Chi-cuadrado bondad de ajuste** — H₀: distribución uniforme de números, con la referencia corregida por muestreo sin reemplazo: `(38/42)·χ²₄₂`
+- **Portmanteau de autocorrelación** — H₀: independencia entre sorteos (`Q = n·Σrᵢ² ~ χ²₄₃` sobre las 43 series binarias)
+- **Test binomial exacto de los 43 números** — Significancia individual, bilateral
+- **Corrección Benjamini-Hochberg (FDR)** — sobre las 43 comparaciones, no sobre las que ya salieron extremas
+- **Corrección Bonferroni** — α = 0.05/43 ≈ 0.00116 como referencia conservadora
+- **Intervalos de confianza 95%** — t-Student para la media de las sumas; banda esperada bajo H₀ para la frecuencia de cada número
+- **Normalidad** — Shapiro-Wilk y Anderson-Darling sobre las sumas (con asimetría y curtosis)
 
 #### Pruebas No Paramétricas
 - **Mann-Whitney U** — Compara sumas entre sorteos impar-pesados vs par-pesados
-- **Kruskal-Wallis** — Igualdad de distribuciones entre posiciones (1ª a 5ª bola)
-- **Friedman** — Estabilidad de patrones consecutivos a través del tiempo (medidas repetidas)
+- **Chi-cuadrado por posición** — Cada posición contra la distribución nula **exacta** del estadístico de orden de una 5-subconjunto de 1..43 (Kruskal-Wallis y ANOVA sobre posiciones ya ordenadas son tautologías: rechazan siempre)
+- **Friedman** — Estabilidad de patrones consecutivos a través del tiempo
 - **Wilcoxon signed-rank** — Cambio sistemático en sumas: primera vs segunda mitad histórica
 
 ### 🤖 Modelado Predictivo Múltiple
-- **Bayesiano (Beta-Binomial)** — Actualización conjugada prior + likelihood reciente
-- **Cadenas de Markov** — Matriz de transición 43×43 entre sorteos consecutivos
-- **Regresión lineal temporal** — Tendencias en sumas y frecuencias por ventana deslizante
+- **Bayesiano (Beta-Binomial)** — Prior con todo el histórico previo a la ventana, likelihood con la ventana reciente (sin solape)
+- **Cadenas de Markov** — Matriz de transición 43×43 normalizada por fila
+- **Regresión lineal temporal** — Tendencias en sumas y frecuencias con ventanas **no solapadas** y FDR sobre los 43 números
 - **Suavizado exponencial (EWMA)** — Pronóstico con factor α configurable
 - **Ensemble ponderado** — 50% Bayesiano + 25% Markov + 25% ExpSmoothing
 - **Top 5 / Top 10** números por cada modelo con probabilidades normalizadas
@@ -60,7 +61,7 @@ Un oráculo interactivo para la lotería **Baloto Colombia** que aplica estadís
 - **4 visualizaciones D3.js** — Frecuencias, Línea temporal, Patrones, Jackpots
 - **Tabla histórica** — Últimos 20 sorteos con bolas visuales coloreadas
 - **Contador de visitas** — Badge en README + contador en página
-- **Navegación accesible** — ARIA labels, focus visible, skip links
+- **Navegación accesible** — ARIA labels, focus visible, skip link, `prefers-reduced-motion`
 - **Toasts notificaciones** — Feedback no intrusivo
 
 ## 🚀 Demo en Vivo
@@ -77,9 +78,15 @@ cd baloto-oracle
 # Instalar dependencias Python
 pip install -r requirements.txt
 
-# Generar datos y análisis completo
-python scripts/fetch_baloto_data.py
-python scripts/analyze_baloto.py
+# Pipeline completo: descarga, análisis, validación y embebido en data.js
+python scripts/fetch_baloto_data.py   # scrape oficial + fusión con el histórico
+python scripts/analyze_baloto.py      # motor estadístico
+python scripts/validate_baloto.py     # validación (pares ciegos, ML, tests exactos)
+python scripts/generate_data_js.py    # embebe todo en src/js/data.js
+python scripts/verify_output.py       # aborta si el artefacto no cuadra
+
+# Tests
+python -m pytest scripts/ -v
 
 # Servir frontend (requiere Node.js 18+)
 npx serve .
@@ -91,23 +98,26 @@ npx serve .
 ```
 baloto-oracle/
 ├── 📁 data/
-│   ├── 📁 raw/           # CSVs originales (1455+ sorteos desde 2017)
-│   └── 📁 processed/     # JSONs para frontend (baloto, revancha, metadata, analysis)
+│   ├── 📁 raw/           # CSVs originales (desde 2021-05-01)
+│   └── 📁 processed/     # JSONs para frontend (baloto, revancha, metadata, analysis, validation)
 ├── 📁 scripts/
-│   ├── fetch_baloto_data.py    # Genera datos históricos sintéticos + reales
-│   └── analyze_baloto.py       # Motor estadístico completo (800+ líneas)
+│   ├── fetch_baloto_data.py    # Scraper oficial + fusión por fecha (nunca pierde historia)
+│   ├── analyze_baloto.py       # Motor estadístico descriptivo e inferencial
+│   ├── validate_baloto.py      # Pares ciegos, ML supervisado/no supervisado, tests exactos
+│   ├── generate_data_js.py     # Embebe el JSON en window.BAL_DATA
+│   ├── verify_output.py        # Contrato del artefacto publicado
+│   └── test_pipeline.py        # Tests del parser y de la integridad de datos
 ├── 📁 src/
-│   ├── 📁 js/main.js           # SPA vanilla ES Modules (600+ líneas)
-│   ├── 📁 css/main.css         # CSS Variables, Grid/Flex, Animations (800+ líneas)
-│   └── 📁 components/          # Componentes reutilizables
+│   ├── 📁 js/main.js           # SPA vanilla ES Modules (~2200 líneas)
+│   ├── 📁 js/data.js           # Generado — no editar a mano
+│   └── 📁 css/main.css         # CSS Variables, Grid/Flex, animaciones (~1500 líneas)
 ├── 📁 .github/workflows/
-│   ├── update-data.yml         # Auto-update Lun/Mie/Sab 00:30 UTC + daily backup
-│   └── ci.yml                  # Lint (ruff/black/isort), tests, HTML/links validation
-├── index.html                  # SPA principal semántica + SEO
-├── package.json                # Node deps (serve, chartjs-plugin-annotation)
-├── requirements.txt            # Python deps (pandas, scipy, statsmodels, etc.)
-├── README.md                   # Este archivo
-├── LICENSE                     # MIT
+│   ├── update-data.yml         # Auto-update Lun/Mié/Sáb 00:30 UTC + backup diario
+│   └── ci.yml                  # Lint, tests, sintaxis JS, HTML y enlaces
+├── index.html                  # SPA semántica + CSP + SRI
+├── AUDIT.md                    # Auditoría de 2026-11 y plan de corrección
+├── package.json                # Node deps (serve)
+├── requirements.txt            # Python deps (con cotas por major)
 └── CHANGELOG.md                # Keep a Changelog format
 ```
 
@@ -115,41 +125,41 @@ baloto-oracle/
 
 | Trigger | Frecuencia | Acción |
 |---------|------------|--------|
-| `schedule` | Lun/Mie/Sab 00:30 UTC | Descarga nuevos sorteos, recalcula análisis completo, despliega |
+| `schedule` | Lun/Mié/Sáb 00:30 UTC | Descarga nuevos sorteos, recalcula análisis y validación, verifica el artefacto, despliega |
 | `schedule` | Diario 06:00 UTC | Backup por si falla el principal |
 | `workflow_dispatch` | Manual | Fuerza actualización completa (`force_update: true`) |
-| `push` | Cada commit | Lint (ruff/black/isort), pytest, HTML validation, link check |
+| `push` / `pull_request` | Cada commit | Lint (ruff/black/isort), pytest, `node --check`, validación HTML y de enlaces |
 
-**Despliegue**: GitHub Pages automático tras actualización exitosa.  
-**Notificaciones**: Workflow `notify` en cambios detectados.
+**Despliegue**: GitHub Pages automático tras actualización exitosa. El artefacto publicado se construye en `_site/` (solo `index.html`, `src/`, `assets/`, `data/`).
 
 ## 📈 Metodología Estadística Detallada
 
 ### Datos
-- **Fuentes**: Kaggle (jaforero/baloto-colombia 2017+, jforero/resultados-baloto 2021+)
-- **Período**: Abril 2017 – presente (cambio formato 5/43 + 1/16 Superbalota)
-- **Sorteos**: Lunes, Miércoles, Sábado · 23:00 COT · Canal RCN
+- **Fuente**: scraping del sitio oficial `baloto.com/resultados` (paginado hasta el fin del historial)
+- **Período**: 2021-05-01 – presente (cambio de formato a 5/43 + 1/16 Superbalota)
+- **Sorteos**: Lunes, Miércoles y Sábado · 23:00 COT · Canal RCN (los lunes solo desde 2025-06)
 - **Formato**: 5 números (1–43) + 1 Superbalota (1–16)
-- **Premios**: 9 categorías · Odds jackpot 1:15.4M · Odds cualquier premio 1:19.34
+- **Premios**: 9 categorías · Odds jackpot 1:15.401.568 · Odds cualquier premio 1:19.34
+- **Historial**: el scraper fusiona por fecha con el histórico almacenado, así que un scrape parcial nunca borra sorteos anteriores
 
 ### Análisis Descriptivo
-- Frecuencias absolutas/relativas con **z-scores** (z > 1.5 caliente, z < -1.5 frío)
+- Frecuencias absolutas/relativas con **z-scores** calculados sobre `√(n·p·(1−p)·(N−k)/(N−1))` (z > 1.5 caliente, z < −1.5 frío)
 - Estadísticos por posición (media, mediana, desv. est. por bola 1–5)
-- Sumas: media teórica 110, desv. teórica ~19.8, percentiles 25/50/75/90/95
+- Sumas: media teórica 110, desv. teórica 26.39 (sin reemplazo), percentiles 25/50/75/90/95
 - Paridad: 6 patrones (5-0 a 0-5) con % observado vs teórico
 - Rango: Alto (23–43) vs Bajo (1–22), mismos 6 patrones
 - Consecutivos: Distribución 0–3+ pares, probabilidad ≥1 par
 - Gaps: Media, mediana, distribución de diferencias entre bolas adyacentes
-- Repeticiones: Ventana 10 sorteos, números que reaparecen
+- Repeticiones: Ventana 10 sorteos, con la línea base teórica al lado (3.55 esperadas)
 
 ### Inferencial Paramétrico
 | Prueba | H₀ | Estadístico | Decisión |
 |--------|-----|-------------|----------|
-| Chi² bondad ajuste | Uniforme 1/43 | χ²(42) | p ≥ 0.05 → No rechazar |
-| Ljung-Box (lags 1-10) | Independencia | Q(10) | p ≥ 0.05 → No rechazar |
-| Binomial (cada número) | p = 5/43 | Exacto | Bonferroni α/43 |
-| IC 95% media sumas | μ = 110 | t-Student | [105, 115] típico |
-| IC 95% prop. números | p = 5/43 | Wald (Normal) | [0.095, 0.135] |
+| Chi² bondad ajuste | Uniforme 1/43 | χ²(42) corregido por (38/42) | p ≥ 0.05 → No rechazar |
+| Portmanteau lag-1 | Independencia de las 43 series | Q = n·Σrᵢ² ~ χ²(43) | p ≥ 0.05 → No rechazar |
+| Binomial (43 números) | p = 5/43 | Exacto bilateral | FDR α = 0.05 |
+| IC 95% media sumas | μ = 110 | t-Student | [108.0, 112.1] |
+| Banda esperada H₀ | p = 5/43 | Wald (Normal) | [0.0917, 0.1408] |
 | Shapiro-Wilk (sumas) | Normalidad | W | p < 0.05 → No normal |
 | Anderson-Darling | Normalidad | A² | A² > crítico 5% → No normal |
 
@@ -157,7 +167,7 @@ baloto-oracle/
 | Prueba | Comparación | Uso |
 |--------|-------------|-----|
 | Mann-Whitney U | Suma (impar-pesado vs par-pesado) | ¿Influye paridad en suma? |
-| Kruskal-Wallis | Distribución por posición (1–5) | ¿Posiciones equivalentes? |
+| Chi² por posición | Posición observada vs orden estadístico exacto | ¿Es justa cada posición? |
 | Friedman | Consecutivos por trimestre | ¿Patrón estable en tiempo? |
 | Wilcoxon signed-rank | Sumas 1ª mitad vs 2ª mitad | ¿Deriva temporal? |
 
@@ -165,11 +175,10 @@ baloto-oracle/
 
 **Bayesiano (Beta-Binomial conjugado)**
 ```
-Prior:     Beta(α = count_total + 1, β = total_draws×5 - count_total + 1)
-Likelihood: Binomial(n = recent_draws×5, p)
-Posterior: Beta(α + count_recent, β + recent_draws×5 - count_recent)
-P(next) = E[Posterior] = (α + count_recent) / (α + β + recent_draws×5)
-Normalizado a 5 números por sorteo
+Prior:      Beta(α = count_previo + 1, β = previos×5 − count_previo + 1)
+Likelihood: ventana reciente (últimos 50 sorteos), sin solape con el prior
+Posterior:  Beta(α + count_reciente, β + reciente×5 − count_reciente)
+P(next) = E[Posterior], normalizado a 5 números por sorteo
 ```
 
 **Markov Chain (Orden 1)**
