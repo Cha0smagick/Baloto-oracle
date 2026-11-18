@@ -390,6 +390,27 @@ No estaban en el informe inicial; los detecté al ejecutar el pipeline y abrir l
   Revancha), así que no es un artefacto de paginación: el sitio ya no lista ese sorteo. Se
   respeta la fuente y se documenta aquí en lugar de reintroducir un dato no verificable.
 
+### Fallos que esta auditoría no detectó (encontrados por el usuario después)
+
+- **Ningún workflow desplegaba al hacer push.** El único que publicaba en Pages era
+  `update-data.yml`, y solo se dispara por `schedule`. Las correcciones de frontend se
+  quedaron en `master` mientras producción seguía sirviendo el `main.js` viejo: el
+  "Top 10" continuaba mostrando 1,2,3…10 **aunque el código ya estaba arreglado**. Un
+  despliegue verificado en local no es un despliegue. Corregido con `deploy.yml`
+  (push a `master`/`main` + dispatch, con `node --check` antes de publicar), que pasa a
+  ser el único publicador; el job de deploy duplicado se sacó de `update-data.yml`.
+- **"Top 10" se leía como "juega 10 números".** Baloto son 5 números (1-43) + 1
+  superbalota (1-16) = 6 bolas, pero la tarjeta no lo decía: el ranking del modelo
+  (43 candidatos) se confundía con la jugada. Ahora se titula "Ranking del modelo: 10
+  candidatos de 43", explica que la jugada lleva 5, marca los 5 primeros como sugeridos,
+  separa el resto como "Alternativas (no forman parte de la jugada)" y la combinación
+  sugerida declara "5 números + 1 superbalota = 6 bolas". La tarjeta de superbalota pasó
+  a "candidatas de 16" con la nota de que la jugada lleva una.
+- **El ranking podía desalinearse sin que nadie se enterara.** `verify_output.py` ahora
+  comprueba que `top_10_most_likely`, `top_5_most_likely` y `most_likely` coinciden con
+  el orden por probabilidad y que estas suman 5; probado en ambos sentidos (no aborta con
+  datos correctos, aborta con un ranking desalineado).
+
 ---
 
 ## Verificación ejecutada
