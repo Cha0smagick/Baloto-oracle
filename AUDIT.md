@@ -353,7 +353,7 @@ Cada paso es independiente y verificable. El orden respeta dependencias: datos a
 - [x] **6.1** README: cifras reales, sin Kaggle ni datos sintéticos, metodología corregida (M19).
 - [x] **6.2** CHANGELOG con la entrada de la auditoría.
 - [x] **6.3** Verificación final: `ruff`, `black --check`, `isort --check`, `pytest`, `node --check`, pipeline completo, Playwright en tema oscuro y claro, 375 px de ancho.
-- [ ] **6.4** Commit + push.
+- [x] **6.4** Commit + push.
 
 ---
 
