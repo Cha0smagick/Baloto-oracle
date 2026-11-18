@@ -276,7 +276,14 @@ pre {
     color: var(--text-primary);
 }
 
-.logo-icon { font-size: 1.5rem; }
+/* Wordmark oficial en la cabecera: el PNG es 277×101 con fondo transparente.
+   `width:auto` respeta la proporción; los atributos width/height del <img>
+   reservan el espacio y evitan el salto de layout. */
+.nav-logo-img {
+    height: 36px;
+    width: auto;
+    display: block;
+}
 
 .nav-links {
     display: flex;
@@ -705,13 +712,6 @@ pre {
 }
 
 /* Header logo */
-.logo-img {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-    border-radius: var(--radius-sm);
-}
-
 /* Validation metric rows */
 .metric-list {
     display: flex;
@@ -1177,7 +1177,6 @@ pre {
     margin-bottom: 3rem;
 }
 
-.footer-brand .logo-icon { font-size: 2rem; }
 .footer-brand span { font-weight: 700; font-size: 1.25rem; }
 .footer-brand p { margin-top: 0.5rem; font-size: 0.875rem; }
 
@@ -1362,6 +1361,10 @@ pre {
     .stat-card { padding: 0.9rem; }
     .stat-value { font-size: 1.5rem; }
     .hero-description { max-width: 100%; }
+
+    /* El wordmark + "Oracle" + los tres botones no caben a 375 px. */
+    .nav-logo-img { height: 28px; }
+    .logo-text { font-size: 1rem; }
     
     .prediction-grid { grid-template-columns: repeat(5, 1fr); }
     .prediction-number { font-size: 1.25rem; }

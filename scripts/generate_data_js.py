@@ -18,6 +18,7 @@ Además:
 - Falla si el validation_results.json no corresponde al dataset actual.
 """
 
+import hashlib
 import json
 import re
 from collections import defaultdict
@@ -67,8 +68,24 @@ def fix_draw_days(metadata: dict, baloto: list) -> dict:
     return metadata
 
 
+def asset_version() -> str:
+    """Cache-buster por CONTENIDO, no por fecha del dato.
+
+    Con `?v=<fecha del sorteo>` un arreglo de CSS/JS no cambiaba la URL: el
+    navegador seguía usando el asset viejo y el layout se rompía hasta que
+    expirara el caché. Con el hash, cualquier cambio en estos ficheros cambia
+    la query.
+    """
+    digest = hashlib.sha256()
+    for rel in ("src/css/main.css", "src/js/main.js", "src/js/data.js"):
+        path = BASE_DIR / rel
+        if path.exists():
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:8]
+
+
 def update_cache_buster(version: str) -> None:
-    """?v= de los assets = fecha del último sorteo (determinista y significativo)."""
+    """?v= de los assets = hash del contenido de CSS + JS."""
     if not INDEX.exists():
         return
     html = INDEX.read_text(encoding="utf-8")
@@ -90,7 +107,6 @@ def main() -> None:
     fix_draw_days(metadata, baloto)
 
     # El artefacto es determinista: la fecha sale del dato, no del reloj.
-    version = metadata["date_range"]["end"].replace("-", "")
     metadata["data_date"] = metadata["date_range"]["end"]
 
     # La validación debe corresponder al mismo dataset que el análisis.
@@ -125,6 +141,7 @@ def main() -> None:
     tmp.write_text(header + body + footer, encoding="utf-8")
     tmp.replace(OUT)
 
+    version = asset_version()
     update_cache_buster(version)
 
     print(
