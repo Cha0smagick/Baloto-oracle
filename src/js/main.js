@@ -1250,14 +1250,22 @@ function populatePredictions() {
     const topNumbersContainer = document.getElementById('top-numbers-prediction');
     if (topNumbersContainer) {
         if (hasNumbers) {
+            // El modelo puntúa 43 números y la jugada lleva 5: se marcan los 5
+            // primeros como sugeridos y el resto como alternativas, para que un
+            // "top 10" no se lea como "juega 10 números".
             const top10 = rankedEntries(numbersPred.probabilities, 10);
-            topNumbersContainer.innerHTML = top10.map(([num, prob], idx) => `
-                <div class="prediction-item" style="animation-delay: ${idx * 50}ms">
+            topNumbersContainer.innerHTML = top10.map(([num, prob], idx) => {
+                const sep = idx === 5
+                    ? '<div class="prediction-separator">Alternativas (no forman parte de la jugada)</div>'
+                    : '';
+                return sep + `
+                <div class="prediction-item${idx < 5 ? ' suggested' : ''}" style="animation-delay: ${idx * 50}ms">
                     <span class="prediction-rank">${idx + 1}</span>
                     <span class="prediction-number">${num}</span>
                     <span class="prediction-prob">${(prob * 100).toFixed(2)}%</span>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         } else {
             topNumbersContainer.innerHTML = '<p class="empty-state">Sin datos de predicción disponibles.</p>';
         }
@@ -1311,6 +1319,7 @@ function populatePredictions() {
                 Basado en probabilidades bayesianas | 
                 Números: ${top5.join(', ')} | 
                 Superbalota: ${topSuper}<br>
+                Jugada completa: <strong>5 números (1-43) + 1 superbalota (1-16) = 6 bolas</strong>.<br>
                 Probabilidad real de acertar el jackpot con esta combinación:
                 <strong>1 entre ${utils.formatNumber(jackpotOdds)}</strong> (0.0000065%).
                 El orden del modelo no cambia esa probabilidad.
