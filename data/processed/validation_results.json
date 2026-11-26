@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-11-24T16:41:37.633809+00:00",
+  "generated_at": "2026-11-26T15:59:24.117972+00:00",
   "data": {
     "source": "https://www.baloto.com/resultados (sitio oficial, scraping paginado)",
-    "draws": 659,
-    "range": "2021-05-01 -> 2026-11-23"
+    "draws": 660,
+    "range": "2021-05-01 -> 2026-11-25"
   },
   "methodology": {
     "blind_test": "Walk-forward out-of-sample: entrenar solo con sorteos anteriores y comparar top-10/top-5 contra el resultado real; contraste con Monte Carlo y test binomial exacto.",
@@ -24,34 +24,34 @@
     },
     "markov": {
       "test_draws": 150,
-      "mean_hits_top5": 0.5333,
-      "mean_hits_top10": 1.1,
+      "mean_hits_top5": 0.54,
+      "mean_hits_top10": 1.1067,
       "expected_hits_top5_random": 0.5814,
       "expected_hits_top10_random": 1.1628,
-      "binom_pvalue_top5": "0.8092",
-      "binom_pvalue_top10": "0.8038",
+      "binom_pvalue_top5": "0.7758",
+      "binom_pvalue_top10": "0.7787",
       "exceeds_chance_top10": false
     },
     "conclusion": "Los modelos NO superan significativamente el azar (p >= 0.05): no se detecta poder predictivo en los sorteos, consistente con eventos aleatorios independientes."
   },
   "supervised": {
     "random_forest": {
-      "mean_auc": 0.5261,
+      "mean_auc": 0.5277,
       "auc_null_hypothesis": 0.5,
       "numbers_with_valid_auc": 43,
-      "mean_hits_top5": 0.6267,
+      "mean_hits_top5": 0.66,
       "expected_hits_top5_random": 0.5814,
-      "lift_vs_random": 1.078
+      "lift_vs_random": 1.135
     },
     "logistic_regression": {
-      "mean_auc": 0.5275,
+      "mean_auc": 0.5292,
       "auc_null_hypothesis": 0.5,
       "numbers_with_valid_auc": 43,
-      "mean_hits_top5": 0.62,
+      "mean_hits_top5": 0.6333,
       "expected_hits_top5_random": 0.5814,
-      "lift_vs_random": 1.066
+      "lift_vs_random": 1.089
     },
-    "train_draws": 508,
+    "train_draws": 509,
     "test_draws": 150,
     "baseline_appearance_rate": 0.1163,
     "conclusion": "AUC medio ~0.5 y lift ~1.0: los clasificadores no encuentran patr\u00f3n aprovechable m\u00e1s all\u00e1 del azar."
@@ -59,33 +59,33 @@
   "unsupervised": {
     "pca": {
       "explained_variance_ratio": [
-        0.3086,
-        0.2657,
-        0.1457,
+        0.3084,
+        0.2656,
+        0.1456,
         0.1393
       ],
       "cumulative_variance": [
-        0.3086,
-        0.5743,
-        0.72,
-        0.8592
+        0.3084,
+        0.574,
+        0.7196,
+        0.8588
       ],
       "interpretation": "Si la varianza est\u00e1 repartida en muchos componentes, no hay estructura latente dominante."
     },
     "kmeans": {
       "silhouette_by_k": {
-        "2": 0.2145,
-        "3": 0.2112,
-        "4": 0.1726,
-        "5": 0.168,
-        "6": 0.1812
+        "2": 0.2148,
+        "3": 0.2115,
+        "4": 0.1727,
+        "5": 0.1752,
+        "6": 0.1597
       },
       "inertia_by_k": {
-        "2": 3667.2,
-        "3": 3023.51,
-        "4": 2724.88,
-        "5": 2519.56,
-        "6": 2318.95
+        "2": 3673.1,
+        "3": 3028.44,
+        "4": 2728.78,
+        "5": 2514.32,
+        "6": 2356.67
       },
       "interpretation": "Silhouette < 0.25 sin m\u00e1ximo claro indica clusters no separables (sorteos intercambiables)."
     },
@@ -96,7 +96,7 @@
           "pair": "9-20",
           "observed": 0.003,
           "expected": 0.0111,
-          "chi2": 9.238,
+          "chi2": 9.212,
           "pvalue": "0.0024",
           "fdr_significant": false
         },
@@ -104,7 +104,7 @@
           "pair": "3-16",
           "observed": 0.0,
           "expected": 0.0111,
-          "chi2": 8.539,
+          "chi2": 8.521,
           "pvalue": "0.0035",
           "fdr_significant": false
         },
@@ -112,24 +112,24 @@
           "pair": "21-31",
           "observed": 0.003,
           "expected": 0.0111,
-          "chi2": 6.872,
-          "pvalue": "0.0088",
+          "chi2": 6.851,
+          "pvalue": "0.0089",
           "fdr_significant": false
         },
         {
           "pair": "5-41",
-          "observed": 0.0046,
+          "observed": 0.0045,
           "expected": 0.0111,
-          "chi2": 6.69,
-          "pvalue": "0.0097",
+          "chi2": 6.667,
+          "pvalue": "0.0098",
           "fdr_significant": false
         },
         {
           "pair": "5-39",
-          "observed": 0.0046,
+          "observed": 0.0045,
           "expected": 0.0111,
-          "chi2": 5.864,
-          "pvalue": "0.0155",
+          "chi2": 5.843,
+          "pvalue": "0.0156",
           "fdr_significant": false
         }
       ],
@@ -139,64 +139,64 @@
   },
   "inferential_exact": {
     "kolmogorov_smirnov_uniformity": {
-      "statistic": 0.0186,
-      "pvalue": "0.9501",
+      "statistic": 0.0185,
+      "pvalue": "0.9401",
       "null_simulations": 500,
       "note": "p calibrado por Monte Carlo: la nula replica el muestreo 5-de-43 sin reemplazo."
     },
     "cramer_von_mises": {
-      "statistic": 0.1744,
-      "pvalue": "0.9820",
+      "statistic": 0.1741,
+      "pvalue": "0.9741",
       "null_simulations": 500
     },
     "runs_wald_wolfowitz": {
       "parity": {
-        "z": -0.321,
-        "pvalue": "0.7484"
+        "z": -0.365,
+        "pvalue": "0.7152"
       },
       "high_low": {
-        "z": -0.492,
-        "pvalue": "0.6225"
+        "z": -0.462,
+        "pvalue": "0.6443"
       },
       "note": "p >= 0.05 \u2192 secuencias compatibles con aleatoriedad."
     },
     "ljung_box_sum_series": {
       "lag1": {
-        "stat": 0.721,
-        "pvalue": "0.3957"
+        "stat": 0.697,
+        "pvalue": "0.4037"
       },
       "lag5": {
-        "stat": 3.658,
-        "pvalue": "0.5996"
+        "stat": 3.716,
+        "pvalue": "0.5910"
       },
       "lag10": {
-        "stat": 4.998,
-        "pvalue": "0.8913"
+        "stat": 5.081,
+        "pvalue": "0.8857"
       },
       "lag20": {
-        "stat": 14.739,
-        "pvalue": "0.7911"
+        "stat": 14.779,
+        "pvalue": "0.7889"
       }
     },
     "fisher_exact_top_pair": {
       "pair": "9-20",
       "cooccurrences": 2,
       "odds_ratio": 0.136,
-      "pvalue": "4.83e-04",
+      "pvalue": "4.82e-04",
       "fdr_significant": false,
       "tested_pairs": 902,
       "note": "Par m\u00e1s fuerte de 903, con p bruto y supervivencia a BH sobre 903."
     },
     "poisson_gaps": {
       "mean_gap_mean": 8.54,
-      "mean_gap_variance": 63.52,
+      "mean_gap_variance": 63.49,
       "theoretical_geometric_variance": 65.36,
-      "geometric_gof_chi2": 5.682,
-      "geometric_gof_pvalue": "0.5774",
+      "geometric_gof_chi2": 5.528,
+      "geometric_gof_pvalue": "0.5958",
       "note": "GOF chi-cuadrado de los gaps agrupados contra la geom\u00e9trica con p=5/43 (apariciones independientes por sorteo)."
     },
     "shannon_entropy": {
-      "entropy_bits": 5.4203,
+      "entropy_bits": 5.4204,
       "max_entropy_bits": 5.4263,
       "ratio": 0.9989,
       "note": "Ratio \u2248 1 \u2192 frecuencias casi uniformes (m\u00e1xima incertidumbre, sin favoritos)."
